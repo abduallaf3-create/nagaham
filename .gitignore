@@ -1,0 +1,3 @@
+*.exe
+!nagham-setup/payload/.keep
+__pycache__/

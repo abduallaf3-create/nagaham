@@ -1,0 +1,34 @@
+name: Nagham
+options:
+  bundleIdPrefix: com.abood
+  deploymentTarget:
+    iOS: "15.0"
+settings:
+  base:
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  Nagham:
+    type: application
+    platform: iOS
+    sources:
+      - path: App
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.abood.nagham
+        PRODUCT_NAME: Nagham
+        INFOPLIST_FILE: App/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        SWIFT_VERSION: "5.0"
+        SWIFT_OBJC_BRIDGING_HEADER: App/Nagham-Bridging-Header.h
+        TARGETED_DEVICE_FAMILY: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        LIBRARY_SEARCH_PATHS: $(PROJECT_DIR)/Core
+        OTHER_LDFLAGS: -lnagham -lresolv -framework Security -framework CoreFoundation -framework SystemConfiguration
+        ENABLE_BITCODE: NO
+        DEAD_CODE_STRIPPING: YES
+        CODE_SIGNING_ALLOWED: NO
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGN_IDENTITY: ""
+        ARCHS: arm64
+        SUPPORTS_MACCATALYST: NO

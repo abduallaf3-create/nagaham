@@ -1,0 +1,46 @@
+{
+  "name": "Nagham",
+  "identifier": "com.abood.nagham.source",
+  "subtitle": "Nagham for iPhone",
+  "description": "Add this source in SideStore to install Nagham and get its updates.",
+  "iconURL": "https://raw.githubusercontent.com/abduallaf3-create/nagaham/main/ios/App/Assets.xcassets/AppIcon.appiconset/icon-1024.png",
+  "website": "https://github.com/abduallaf3-create/nagaham",
+  "tintColor": "d946ef",
+  "apps": [
+    {
+      "name": "Nagham",
+      "bundleIdentifier": "com.abood.nagham",
+      "developerName": "Abood",
+      "subtitle": "نغم — موسيقى بدون حدود",
+      "localizedDescription": "Nagham on your iPhone: search any singer and see every song and album, follow artists, playlists, likes, lyrics, themes — and full songs from YouTube Music.",
+      "iconURL": "https://raw.githubusercontent.com/abduallaf3-create/nagaham/main/ios/App/Assets.xcassets/AppIcon.appiconset/icon-1024.png",
+      "tintColor": "d946ef",
+      "category": "entertainment",
+      "screenshotURLs": [],
+      "versions": [
+        {
+          "version": "3.18.0",
+          "buildVersion": "0",
+          "date": "2026-11-24",
+          "localizedDescription": "• نغم صار له تطبيق آيفون! يتثبّت ببرنامج SideStore المجاني، والتحديثات توصله من SideStore\n• نسخ احتياطية: بلاي لستاتك ولايكاتك والمغنين اللي تتابعهم وإعداداتك تنحفظ كل يوم لحالها، وتقدر تسوي نسخة وترجّعها من الإعدادات (About)",
+          "downloadURL": "https://github.com/abduallaf3-create/nagaham/releases/download/ios-v3.18.0/Nagham.ipa",
+          "size": 0,
+          "minOSVersion": "15.0"
+        }
+      ],
+      "version": "3.18.0",
+      "versionDate": "2026-11-24",
+      "versionDescription": "• نغم صار له تطبيق آيفون! يتثبّت ببرنامج SideStore المجاني، والتحديثات توصله من SideStore\n• نسخ احتياطية: بلاي لستاتك ولايكاتك والمغنين اللي تتابعهم وإعداداتك تنحفظ كل يوم لحالها، وتقدر تسوي نسخة وترجّعها من الإعدادات (About)",
+      "downloadURL": "https://github.com/abduallaf3-create/nagaham/releases/download/ios-v3.18.0/Nagham.ipa",
+      "size": 0,
+      "appPermissions": {
+        "entitlements": [],
+        "privacy": {
+          "NSMicrophoneUsageDescription": "Karaoke uses the microphone to score your singing.",
+          "NSCameraUsageDescription": "Karaoke can record a video of you singing."
+        }
+      }
+    }
+  ],
+  "news": []
+}
