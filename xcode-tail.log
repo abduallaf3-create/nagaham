@@ -1,0 +1,200 @@
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_sha2.cpython-314-iphoneos.so
+Installing binary for Frameworks/_sha2.framework/_sha2
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_uuid.cpython-314-iphoneos.so
+Installing binary for Frameworks/_uuid.framework/_uuid
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_codecs_cn.cpython-314-iphoneos.so
+Installing binary for Frameworks/_codecs_cn.framework/_codecs_cn
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_json.cpython-314-iphoneos.so
+Installing binary for Frameworks/_json.framework/_json
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/zlib.cpython-314-iphoneos.so
+Installing binary for Frameworks/zlib.framework/zlib
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_ctypes.cpython-314-iphoneos.so
+Installing binary for Frameworks/_ctypes.framework/_ctypes
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_elementtree.cpython-314-iphoneos.so
+Installing binary for Frameworks/_elementtree.framework/_elementtree
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_lzma.cpython-314-iphoneos.so
+Installing binary for Frameworks/_lzma.framework/_lzma
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_sha1.cpython-314-iphoneos.so
+Installing binary for Frameworks/_sha1.framework/_sha1
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_blake2.cpython-314-iphoneos.so
+Installing binary for Frameworks/_blake2.framework/_blake2
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_interpreters.cpython-314-iphoneos.so
+Installing binary for Frameworks/_interpreters.framework/_interpreters
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/pyexpat.cpython-314-iphoneos.so
+Installing binary for Frameworks/pyexpat.framework/pyexpat
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_struct.cpython-314-iphoneos.so
+Installing binary for Frameworks/_struct.framework/_struct
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_lsprof.cpython-314-iphoneos.so
+Installing binary for Frameworks/_lsprof.framework/_lsprof
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_codecs_jp.cpython-314-iphoneos.so
+Installing binary for Frameworks/_codecs_jp.framework/_codecs_jp
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_sqlite3.cpython-314-iphoneos.so
+Installing binary for Frameworks/_sqlite3.framework/_sqlite3
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_bz2.cpython-314-iphoneos.so
+Installing binary for Frameworks/_bz2.framework/_bz2
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/binascii.cpython-314-iphoneos.so
+Installing binary for Frameworks/binascii.framework/binascii
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_codecs_iso2022.cpython-314-iphoneos.so
+Installing binary for Frameworks/_codecs_iso2022.framework/_codecs_iso2022
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_statistics.cpython-314-iphoneos.so
+Installing binary for Frameworks/_statistics.framework/_statistics
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_socket.cpython-314-iphoneos.so
+Installing binary for Frameworks/_socket.framework/_socket
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/fcntl.cpython-314-iphoneos.so
+Installing binary for Frameworks/fcntl.framework/fcntl
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_ssl.cpython-314-iphoneos.so
+Installing binary for Frameworks/_ssl.framework/_ssl
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_sha3.cpython-314-iphoneos.so
+Installing binary for Frameworks/_sha3.framework/_sha3
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_multibytecodec.cpython-314-iphoneos.so
+Installing binary for Frameworks/_multibytecodec.framework/_multibytecodec
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/unicodedata.cpython-314-iphoneos.so
+Installing binary for Frameworks/unicodedata.framework/unicodedata
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/termios.cpython-314-iphoneos.so
+Installing binary for Frameworks/termios.framework/termios
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_bisect.cpython-314-iphoneos.so
+Installing binary for Frameworks/_bisect.framework/_bisect
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_hmac.cpython-314-iphoneos.so
+Installing binary for Frameworks/_hmac.framework/_hmac
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_ctypes_test.cpython-314-iphoneos.so
+Installing binary for Frameworks/_ctypes_test.framework/_ctypes_test
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_testcapi.cpython-314-iphoneos.so
+Installing binary for Frameworks/_testcapi.framework/_testcapi
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_remote_debugging.cpython-314-iphoneos.so
+Installing binary for Frameworks/_remote_debugging.framework/_remote_debugging
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_interpqueues.cpython-314-iphoneos.so
+Installing binary for Frameworks/_interpqueues.framework/_interpqueues
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/cmath.cpython-314-iphoneos.so
+Installing binary for Frameworks/cmath.framework/cmath
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/resource.cpython-314-iphoneos.so
+Installing binary for Frameworks/resource.framework/resource
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_testmultiphase.cpython-314-iphoneos.so
+Installing binary for Frameworks/_testmultiphase.framework/_testmultiphase
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/xxsubtype.cpython-314-iphoneos.so
+Installing binary for Frameworks/xxsubtype.framework/xxsubtype
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_pickle.cpython-314-iphoneos.so
+Installing binary for Frameworks/_pickle.framework/_pickle
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_zoneinfo.cpython-314-iphoneos.so
+Installing binary for Frameworks/_zoneinfo.framework/_zoneinfo
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/mmap.cpython-314-iphoneos.so
+Installing binary for Frameworks/mmap.framework/mmap
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_queue.cpython-314-iphoneos.so
+Installing binary for Frameworks/_queue.framework/_queue
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/select.cpython-314-iphoneos.so
+Installing binary for Frameworks/select.framework/select
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/array.cpython-314-iphoneos.so
+Installing binary for Frameworks/array.framework/array
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_decimal.cpython-314-iphoneos.so
+Installing binary for Frameworks/_decimal.framework/_decimal
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_heapq.cpython-314-iphoneos.so
+Installing binary for Frameworks/_heapq.framework/_heapq
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_codecs_tw.cpython-314-iphoneos.so
+Installing binary for Frameworks/_codecs_tw.framework/_codecs_tw
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_asyncio.cpython-314-iphoneos.so
+Installing binary for Frameworks/_asyncio.framework/_asyncio
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/math.cpython-314-iphoneos.so
+Installing binary for Frameworks/math.framework/math
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_dbm.cpython-314-iphoneos.so
+Installing binary for Frameworks/_dbm.framework/_dbm
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_md5.cpython-314-iphoneos.so
+Installing binary for Frameworks/_md5.framework/_md5
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/xxlimited_35.cpython-314-iphoneos.so
+Installing binary for Frameworks/xxlimited_35.framework/xxlimited_35
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/xxlimited.cpython-314-iphoneos.so
+Installing binary for Frameworks/xxlimited.framework/xxlimited
+Signing framework as ad-hoc (-)...
+Creating framework for python/lib/python3.14/lib-dynload/_codecs_kr.cpython-314-iphoneos.so
+Installing binary for Frameworks/_codecs_kr.framework/_codecs_kr
+Signing framework as ad-hoc (-)...
+Installing app extension modules ...
+Installing app_packages extension modules ...
+
+GenerateDSYMFile /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app.dSYM /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app/Nagham (in target 'Nagham' from project 'Nagham')
+    cd /Users/runner/work/nagaham/nagaham/ios
+    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/dsymutil /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app/Nagham -o /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app.dSYM
+
+CopySwiftLibs /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app (in target 'Nagham' from project 'Nagham')
+    cd /Users/runner/work/nagaham/nagaham/ios
+    builtin-swiftStdLibTool --copy --verbose --scan-executable /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app/Nagham --scan-folder /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app/Frameworks --scan-folder /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app/PlugIns --scan-folder /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app/SystemExtensions --scan-folder /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app/Extensions --platform iphoneos --toolchain /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --destination /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app/Frameworks --strip-bitcode --strip-bitcode-tool /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/bitcode_strip --emit-dependency-info /Users/runner/work/nagaham/nagaham/ios/build/Build/Intermediates.noindex/Nagham.build/Release-iphoneos/Nagham.build/SwiftStdLibToolInputDependencies.dep --filter-for-swift-os
+Ignoring --strip-bitcode because --sign was not passed
+
+ExtractAppIntentsMetadata (in target 'Nagham' from project 'Nagham')
+    cd /Users/runner/work/nagaham/nagaham/ios
+    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsmetadataprocessor --toolchain-dir /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain --module-name Nagham --sdk-root /Applications/Xcode_16.4.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS18.5.sdk --xcode-version 16F6 --platform-family iOS --deployment-target 15.0 --bundle-identifier com.abood.nagham --output /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app --target-triple arm64-apple-ios15.0 --binary-file /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app/Nagham --dependency-file /Users/runner/work/nagaham/nagaham/ios/build/Build/Intermediates.noindex/Nagham.build/Release-iphoneos/Nagham.build/Objects-normal/arm64/Nagham_dependency_info.dat --stringsdata-file /Users/runner/work/nagaham/nagaham/ios/build/Build/Intermediates.noindex/Nagham.build/Release-iphoneos/Nagham.build/Objects-normal/arm64/ExtractedAppShortcutsMetadata.stringsdata --source-file-list /Users/runner/work/nagaham/nagaham/ios/build/Build/Intermediates.noindex/Nagham.build/Release-iphoneos/Nagham.build/Objects-normal/arm64/Nagham.SwiftFileList --metadata-file-list /Users/runner/work/nagaham/nagaham/ios/build/Build/Intermediates.noindex/Nagham.build/Release-iphoneos/Nagham.build/Nagham.DependencyMetadataFileList --static-metadata-file-list /Users/runner/work/nagaham/nagaham/ios/build/Build/Intermediates.noindex/Nagham.build/Release-iphoneos/Nagham.build/Nagham.DependencyStaticMetadataFileList --swift-const-vals-list /Users/runner/work/nagaham/nagaham/ios/build/Build/Intermediates.noindex/Nagham.build/Release-iphoneos/Nagham.build/Objects-normal/arm64/Nagham.SwiftConstValuesFileList --compile-time-extraction --deployment-aware-processing --validate-assistant-intents --no-app-shortcuts-localization
+2026-11-24 14:37:50.834 appintentsmetadataprocessor[4249:15643] Starting appintentsmetadataprocessor export
+2026-11-24 14:37:50.862 appintentsmetadataprocessor[4249:15643] warning: Metadata extraction skipped. No AppIntents.framework dependency found.
+
+AppIntentsSSUTraining (in target 'Nagham' from project 'Nagham')
+    cd /Users/runner/work/nagaham/nagaham/ios
+    /Applications/Xcode_16.4.app/Contents/Developer/Toolchains/XcodeDefault.xctoolchain/usr/bin/appintentsnltrainingprocessor --infoplist-path /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app/Info.plist --temp-dir-path /Users/runner/work/nagaham/nagaham/ios/build/Build/Intermediates.noindex/Nagham.build/Release-iphoneos/Nagham.build/ssu --bundle-id com.abood.nagham --product-path /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app --extracted-metadata-path /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app/Metadata.appintents --metadata-file-list /Users/runner/work/nagaham/nagaham/ios/build/Build/Intermediates.noindex/Nagham.build/Release-iphoneos/Nagham.build/Nagham.DependencyMetadataFileList --archive-ssu-assets
+2026-11-24 14:37:50.954 appintentsnltrainingprocessor[4254:15663] Parsing options for appintentsnltrainingprocessor
+2026-11-24 14:37:50.957 appintentsnltrainingprocessor[4254:15663] No AppShortcuts found - Skipping.
+
+RegisterExecutionPolicyException /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app (in target 'Nagham' from project 'Nagham')
+    cd /Users/runner/work/nagaham/nagaham/ios
+    builtin-RegisterExecutionPolicyException /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app
+
+Validate /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app (in target 'Nagham' from project 'Nagham')
+    cd /Users/runner/work/nagaham/nagaham/ios
+    builtin-validationUtility /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app -infoplist-subpath Info.plist
+
+Touch /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app (in target 'Nagham' from project 'Nagham')
+    cd /Users/runner/work/nagaham/nagaham/ios
+    /usr/bin/touch -c /Users/runner/work/nagaham/nagaham/ios/build/Build/Products/Release-iphoneos/Nagham.app
+
+note: Disabling previews because SWIFT_VERSION is set and SWIFT_OPTIMIZATION_LEVEL=-O, expected -Onone (in target 'Nagham' from project 'Nagham')
+note: Run script build phase 'Process Python libraries' will be run during every build because the option to run the script phase "Based on dependency analysis" is unchecked. (in target 'Nagham' from project 'Nagham')
+** BUILD SUCCEEDED **
+
