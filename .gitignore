@@ -1,3 +1,5 @@
 *.exe
 !nagham-setup/payload/.keep
 __pycache__/
+ios/Python.xcframework/
+ios/python/app_packages/

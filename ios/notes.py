@@ -1,7 +1,7 @@
 """What's new in this version (from Nagham's own changelog, web/whatsnew.js)."""
 import re, sys, pathlib
 def notes(version):
-    js = (pathlib.Path(__file__).resolve().parent.parent / "nagham" / "web" / "whatsnew.js").read_text(encoding="utf-8")
+    js = (pathlib.Path(__file__).resolve().parent.parent / "ios" / "server" / "web" / "whatsnew.js").read_text(encoding="utf-8")
     m = re.search(r'\{\s*v:\s*"' + re.escape(version) + r'",\s*items:\s*\[(.*?)\]\s*\}', js, re.S)
     if not m:
         return f"Nagham {version}"

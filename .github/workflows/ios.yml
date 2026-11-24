@@ -3,7 +3,7 @@ name: iPhone app
 on:
   push:
     branches: [main]
-    paths: ["nagham/**", "ios/**", ".github/workflows/ios.yml"]
+    paths: ["ios/**", ".github/workflows/ios.yml"]
   workflow_dispatch:
 
 permissions:
@@ -24,6 +24,10 @@ jobs:
           go-version: "1.24.x"
           cache: false
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
       - name: Tools
         run: brew install xcodegen
 
@@ -34,13 +38,19 @@ jobs:
           export BUILD="${{ github.run_number }}"
           ios/build.sh 2>&1 | tee ios/full.log
 
+      - name: Check yt-dlp with JavaScriptCore (Mac = same engine as the iPhone)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: python3 ios/ci_check.py 2>&1 | tee ios/jsc-check.log
+
       - name: Publish (GitHub release + SideStore source)
         if: steps.build.outcome == 'success'
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          VERSION="$(grep -o 'appVersion = "[^"]*"' nagham/update.go | cut -d'"' -f2)"
+          VERSION="$(grep -o 'appVersion = "[^"]*"' ios/server/update.go | cut -d'"' -f2)"
           TAG="ios-v$VERSION"
           NOTES="$(python3 ios/notes.py "$VERSION")"
           if gh release view "$TAG" >/dev/null 2>&1; then
@@ -64,7 +74,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mkdir -p /tmp/cilog
-          cp ios/full.log /tmp/cilog/ 2>/dev/null || true
+          cp ios/full.log ios/jsc-check.log /tmp/cilog/ 2>/dev/null || true
           if [ -f ios/build.log ]; then grep -E "error|warning: |BUILD|ld:|Undefined|note:" ios/build.log | head -400 > /tmp/cilog/xcode-errors.log; tail -200 ios/build.log > /tmp/cilog/xcode-tail.log; fi
           echo "run ${{ github.run_number }} build=${{ steps.build.outcome }} commit=${{ github.sha }}" > /tmp/cilog/status.txt
           cd /tmp/cilog

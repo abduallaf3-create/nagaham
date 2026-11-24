@@ -60,6 +60,9 @@ final class MainViewController: UIViewController, WKUIDelegate, WKNavigationDele
             try? "Copy MP3 / M4A / FLAC / WAV songs into this folder, then open Nagham → Settings → Music on this iPhone → Rescan.\n".write(to: note, atomically: true, encoding: .utf8)
         }
         DispatchQueue.global(qos: .userInitiated).async {
+            PythonBridge.start() // yt-dlp: ready a few seconds later; the server waits for it when needed
+        }
+        DispatchQueue.global(qos: .userInitiated).async {
             let port = support.path.withCString { d in
                 music.path.withCString { m in
                     NaghamStart(UnsafeMutablePointer(mutating: d), UnsafeMutablePointer(mutating: m))

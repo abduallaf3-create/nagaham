@@ -38,9 +38,23 @@ final class YTMPlayer: NSObject, WKNavigationDelegate, WKUIDelegate {
     // the desktop YouTube Music site (the phone site keeps asking to open the YouTube app)
     private let desktopUA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.6 Safari/605.1.15"
 
+    private var adRules: WKContentRuleList?
+
     init(host: UIView) {
         self.host = host
         super.init()
+        // the backup player (YouTube Music) only: block ad servers; the page script skips any ad that still comes
+        let rules = #"""
+        [{"trigger":{"url-filter":"doubleclick\\.net"},"action":{"type":"block"}},
+         {"trigger":{"url-filter":"googleadservices\\.com"},"action":{"type":"block"}},
+         {"trigger":{"url-filter":"googlesyndication\\.com"},"action":{"type":"block"}},
+         {"trigger":{"url-filter":"/pagead/"},"action":{"type":"block"}},
+         {"trigger":{"url-filter":"/api/stats/ads"},"action":{"type":"block"}},
+         {"trigger":{"url-filter":"/get_midroll_"},"action":{"type":"block"}}]
+        """#
+        WKContentRuleListStore.default()?.compileContentRuleList(forIdentifier: "nagham-ads", encodedContentRuleList: rules) { [weak self] list, err in
+            if let list = list { DispatchQueue.main.async { self?.adRules = list } }
+        }
     }
 
     func start(base: String, onColors: @escaping (String, Bool) -> Void) {
@@ -129,6 +143,7 @@ final class YTMPlayer: NSObject, WKNavigationDelegate, WKUIDelegate {
         cfg.allowsAirPlayForMediaPlayback = true
         cfg.allowsPictureInPictureMediaPlayback = true
         cfg.websiteDataStore = .default() // a YouTube sign-in stays
+        if let r = adRules { cfg.userContentController.add(r) }
         let w = WKWebView(frame: CGRect(x: 0, y: host.bounds.height - 2, width: 2, height: 2), configuration: cfg)
         w.customUserAgent = desktopUA
         w.navigationDelegate = self
