@@ -20,11 +20,11 @@
       "versions": [
         {
           "version": "3.18.0",
-          "buildVersion": "0",
+          "buildVersion": "1",
           "date": "2026-11-24",
           "localizedDescription": "• نغم صار له تطبيق آيفون! يتثبّت ببرنامج SideStore المجاني، والتحديثات توصله من SideStore\n• نسخ احتياطية: بلاي لستاتك ولايكاتك والمغنين اللي تتابعهم وإعداداتك تنحفظ كل يوم لحالها، وتقدر تسوي نسخة وترجّعها من الإعدادات (About)",
           "downloadURL": "https://github.com/abduallaf3-create/nagaham/releases/download/ios-v3.18.0/Nagham.ipa",
-          "size": 0,
+          "size": 3844917,
           "minOSVersion": "15.0"
         }
       ],
@@ -32,7 +32,7 @@
       "versionDate": "2026-11-24",
       "versionDescription": "• نغم صار له تطبيق آيفون! يتثبّت ببرنامج SideStore المجاني، والتحديثات توصله من SideStore\n• نسخ احتياطية: بلاي لستاتك ولايكاتك والمغنين اللي تتابعهم وإعداداتك تنحفظ كل يوم لحالها، وتقدر تسوي نسخة وترجّعها من الإعدادات (About)",
       "downloadURL": "https://github.com/abduallaf3-create/nagaham/releases/download/ios-v3.18.0/Nagham.ipa",
-      "size": 0,
+      "size": 3844917,
       "appPermissions": {
         "entitlements": [],
         "privacy": {
