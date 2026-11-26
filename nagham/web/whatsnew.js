@@ -1,6 +1,10 @@
 "use strict";
 /* Nagham – "What's new": shown once after an update (the versions you skipped too), and from the menu under your name. */
 const CHANGELOG = [
+  { v: "4.0.1", items: [
+    "نغم صار على الماك بعد 🍎 — له ملف تثبيت خاص (.dmg) ويتحدث لحاله مثل الويندوز",
+    "الويندوز والماك كل واحد يلقى تحديثاته بصفحته الخاصة",
+  ] },
   { v: "4.0.0", items: [
     "نغم 4.0 🎉 — صفحة «For you» باقتراحاتك من يوتيوب ميوزك أو سبوتيفاي، وربطها ضغطة وحدة",
     "الرئيسية تقترح لك أغاني على ذوقك، والبحث والتحميل أسرع، والبرنامج أخف",

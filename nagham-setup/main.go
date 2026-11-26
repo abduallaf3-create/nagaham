@@ -20,7 +20,7 @@ import (
 //go:embed payload/Nagham.exe
 var payload []byte
 
-const version = "4.0.0"
+const version = "4.0.1"
 
 var (
 	user32      = syscall.NewLazyDLL("user32.dll")
