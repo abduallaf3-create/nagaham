@@ -140,8 +140,8 @@ func setupAssetNamed(r *ghRelease) (string, int64, string) {
 	best, size, name := "", int64(0), ""
 	for _, a := range r.Assets {
 		n := strings.ToLower(a.Name)
-		if runtime.GOOS == "darwin" { // the Mac app: Nagham-mac-<version>.zip
-			if strings.HasSuffix(n, ".zip") && strings.Contains(n, "mac") {
+		if runtime.GOOS == "darwin" { // the Mac app: Nagham-mac-<version>.dmg (or .zip)
+			if strings.Contains(n, "mac") && (strings.HasSuffix(n, ".dmg") || (strings.HasSuffix(n, ".zip") && !strings.HasSuffix(strings.ToLower(name), ".dmg"))) {
 				best, size, name = a.URL, a.Size, a.Name
 			}
 			continue
@@ -258,7 +258,7 @@ func updateInstall(w http.ResponseWriter, r *http.Request) {
 	asset, size := setupAsset(rel)
 	if asset == "" || !allowedDownload(asset) {
 		if runtime.GOOS == "darwin" {
-			http.Error(w, "this release has no Nagham-mac zip attached", 400)
+			http.Error(w, "this release has no Nagham for Mac (.dmg) attached", 400)
 		} else {
 			http.Error(w, "this release has no NaghamSetup.exe attached", 400)
 		}
@@ -298,7 +298,11 @@ func updateInstall(w http.ResponseWriter, r *http.Request) {
 		os.MkdirAll(dir, 0o755)
 		dst := filepath.Join(dir, "NaghamSetup-"+ver+".exe")
 		if runtime.GOOS == "darwin" {
-			dst = filepath.Join(dir, "Nagham-mac-"+ver+".zip")
+			ext := ".zip"
+			if strings.HasSuffix(strings.ToLower(asset), ".dmg") {
+				ext = ".dmg"
+			}
+			dst = filepath.Join(dir, "Nagham-mac-"+ver+ext)
 		}
 		f, err := os.Create(dst)
 		if err != nil {

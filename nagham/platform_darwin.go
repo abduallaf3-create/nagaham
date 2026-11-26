@@ -72,7 +72,19 @@ func installUpdate(zip string) error {
 	}
 	dir := filepath.Join(filepath.Dir(zip), "unpacked")
 	os.RemoveAll(dir)
-	if out, err := exec.Command("/usr/bin/ditto", "-x", "-k", zip, dir).CombinedOutput(); err != nil {
+	if strings.HasSuffix(strings.ToLower(zip), ".dmg") { // the installer disk: open it, copy the app out, close it
+		mnt := filepath.Join(filepath.Dir(zip), "mnt")
+		os.MkdirAll(mnt, 0o755)
+		if out, err := exec.Command("/usr/bin/hdiutil", "attach", "-nobrowse", "-readonly", "-noautoopen", "-mountpoint", mnt, zip).CombinedOutput(); err != nil {
+			return errors.New("couldn't open the update: " + strings.TrimSpace(string(out)))
+		}
+		os.MkdirAll(dir, 0o755)
+		out, err := exec.Command("/usr/bin/ditto", filepath.Join(mnt, "Nagham.app"), filepath.Join(dir, "Nagham.app")).CombinedOutput()
+		exec.Command("/usr/bin/hdiutil", "detach", "-force", mnt).Run()
+		if err != nil {
+			return errors.New("couldn't copy the update: " + strings.TrimSpace(string(out)))
+		}
+	} else if out, err := exec.Command("/usr/bin/ditto", "-x", "-k", zip, dir).CombinedOutput(); err != nil {
 		return errors.New("couldn't unpack the update: " + strings.TrimSpace(string(out)))
 	}
 	newApp := filepath.Join(dir, "Nagham.app")

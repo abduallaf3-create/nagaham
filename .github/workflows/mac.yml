@@ -62,7 +62,7 @@ jobs:
           osascript -e 'quit app "Nagham"' || true
           sleep 3; pgrep -fl nagham-server | tee mac/check/after-quit.txt || echo "server stopped" | tee mac/check/after-quit.txt
 
-      - name: Try the Mac self-update (a pretend newer release, served on this Mac)
+      - name: Try installing from the .dmg, then the Mac self-update (a pretend newer release, served on this Mac)
         if: always()
         continue-on-error: true
         shell: bash
@@ -70,31 +70,33 @@ jobs:
           set -x
           mkdir -p mac/check /tmp/rel/repos/abduallaf3-create/nagaham/releases
           D="$HOME/Library/Application Support/Nagham"
-          ZIP="$(ls mac/build/Nagham-mac-*.zip | head -1)"
-          cp "$ZIP" /tmp/rel/Nagham-mac-9.9.9.zip
-          SIZE=$(stat -f %z /tmp/rel/Nagham-mac-9.9.9.zip)
-          cat > /tmp/rel/repos/abduallaf3-create/nagaham/releases/latest <<JSON
-          {"tag_name":"v9.9.9","name":"test","body":"test","html_url":"x","assets":[{"name":"Nagham-mac-9.9.9.zip","browser_download_url":"http://127.0.0.1:8765/Nagham-mac-9.9.9.zip","size":$SIZE}]}
-          JSON
-          (cd /tmp/rel && python3 -m http.server 8765 >/tmp/rel.log 2>&1 &)
-          rm -rf /Applications/Nagham.app && ditto -x -k "$ZIP" /Applications/
+          DMG="$(ls mac/build/Nagham-mac-*.dmg | head -1)"
+          # like a person: open the .dmg, put Nagham in Applications
+          rm -rf /Applications/Nagham.app
+          hdiutil attach -nobrowse -mountpoint /tmp/dmgcheck "$DMG" && ls -la /tmp/dmgcheck | tee mac/check/dmg-contents.txt
+          ditto /tmp/dmgcheck/Nagham.app /Applications/Nagham.app; hdiutil detach /tmp/dmgcheck || true
+          cp "$DMG" /tmp/rel/Nagham-mac-9.9.9.dmg
+          SIZE=$(stat -f %z /tmp/rel/Nagham-mac-9.9.9.dmg)
+          echo "{\"tag_name\":\"v9.9.9\",\"name\":\"test\",\"body\":\"test\",\"html_url\":\"x\",\"assets\":[{\"name\":\"Nagham-mac-9.9.9.dmg\",\"browser_download_url\":\"http://127.0.0.1:8765/Nagham-mac-9.9.9.dmg\",\"size\":$SIZE}]}" > /tmp/rel/repos/abduallaf3-create/nagaham/releases/latest
+          nohup python3 -m http.server 8765 --bind 127.0.0.1 --directory /tmp/rel > /tmp/rel.log 2>&1 &
+          for i in $(seq 1 20); do curl -s -m 2 -o /dev/null http://127.0.0.1:8765/ && break; sleep 0.5; done
+          curl -s -m 5 http://127.0.0.1:8765/repos/abduallaf3-create/nagaham/releases/latest > mac/check/update-fake.txt || echo "fake release not reachable" > mac/check/update-fake.txt
           BEFORE=$(stat -f %i /Applications/Nagham.app)
           rm -f "$D/port"
           open --env NAGHAM_GH_API=http://127.0.0.1:8765 --env NAGHAM_TEST_DLHOST=127.0.0.1:8765 /Applications/Nagham.app
           for i in $(seq 1 60); do [ -s "$D/port" ] && break; sleep 1; done
           B="http://127.0.0.1:$(cat "$D/port")"
-          curl -s -m 5 http://127.0.0.1:8765/repos/abduallaf3-create/nagaham/releases/latest | head -c 200 | tee mac/check/update-fake.txt; echo
-          ps eww -p "$(pgrep -f 'MacOS/nagham-server' | head -1)" | tr ' ' '\n' | grep NAGHAM | tee -a mac/check/update-fake.txt
-          cat /tmp/rel.log | tee -a mac/check/update-fake.txt
-          curl -s "$B/api/update/check" | tee mac/check/update-check.json; echo
+          sleep 3
+          curl -s "$B/api/update/check" > mac/check/update-check.json || true
           rm -f "$D/port"
-          curl -s -X POST "$B/api/update/install" | tee mac/check/update-install.json; echo
-          for i in $(seq 1 60); do [ -s "$D/port" ] && break; sleep 1; done
+          curl -s -X POST "$B/api/update/install" > mac/check/update-install.json || true
+          for i in $(seq 1 90); do [ -s "$D/port" ] && break; sleep 1; done
           sleep 3
           AFTER=$(stat -f %i /Applications/Nagham.app)
           { echo "app folder before=$BEFORE after=$AFTER"; [ "$BEFORE" != "$AFTER" ] && echo "SWAPPED" || echo "NOT swapped";
             [ -s "$D/port" ] && echo "new Nagham running on port $(cat "$D/port")" || echo "Nagham did NOT come back";
-            ls /Applications | grep -i nagham; pgrep -fl "Nagham.app/Contents/MacOS" ; tail -5 "$D/update.log" 2>/dev/null; } | tee mac/check/update-result.txt
+            ls /Applications | grep -i nagham; pgrep -fl "Nagham.app/Contents/MacOS" || true; tail -5 "$D/update.log" 2>/dev/null || true; } > mac/check/update-result.txt
+          cat mac/check/update-check.json mac/check/update-install.json mac/check/update-result.txt
           screencapture -x mac/check/3-after-update.png || true
           osascript -e 'quit app "Nagham"' || true
 
@@ -104,6 +106,7 @@ jobs:
           name: Nagham-mac
           path: |
             mac/build/Nagham-mac-*.zip
+            mac/build/Nagham-mac-*.dmg
             mac/build.log
             mac/check/
           if-no-files-found: warn
@@ -114,7 +117,7 @@ jobs:
         run: |
           set -e
           rm -rf /tmp/out && mkdir -p /tmp/out
-          cp mac/build/Nagham-mac-*.zip /tmp/out/ 2>/dev/null || true
+          cp mac/build/Nagham-mac-*.zip mac/build/Nagham-mac-*.dmg /tmp/out/ 2>/dev/null || true
           cp -R mac/check /tmp/out/check 2>/dev/null || true
           cp mac/build.log /tmp/out/ 2>/dev/null || true
           cd /tmp/out
