@@ -88,11 +88,13 @@ func newerVersion(latest, cur string) bool {
 }
 
 type ghRelease struct {
-	Tag    string `json:"tag_name"`
-	Name   string `json:"name"`
-	Body   string `json:"body"`
-	Page   string `json:"html_url"`
-	Assets []struct {
+	Tag        string `json:"tag_name"`
+	Draft      bool   `json:"draft"`
+	Prerelease bool   `json:"prerelease"`
+	Name       string `json:"name"`
+	Body       string `json:"body"`
+	Page       string `json:"html_url"`
+	Assets     []struct {
 		Name string `json:"name"`
 		URL  string `json:"browser_download_url"`
 		Size int64  `json:"size"`
@@ -106,8 +108,47 @@ var ghAPI = func() string {
 	return "https://api.github.com"
 }()
 
+// latestRelease: the newest release for this computer. Windows and Mac have their own release pages
+// (v4.0.0 with NaghamSetup.exe, mac-v4.0.0 with Nagham-mac.dmg): each picks the newest one that has
+// its own installer, whichever of the two is marked "latest" on GitHub.
 func latestRelease(repo string) (*ghRelease, error) {
-	req, _ := http.NewRequest("GET", ghAPI+"/repos/"+repo+"/releases/latest", nil)
+	r, err := ghGet[ghRelease](repo, "/releases/latest")
+	if err == nil {
+		if a, _ := setupAsset(r); a != "" {
+			return r, nil
+		}
+	}
+	list, lerr := ghGet[[]ghRelease](repo, "/releases?per_page=30")
+	if lerr != nil {
+		if err != nil {
+			return nil, err
+		}
+		return nil, lerr
+	}
+	var best *ghRelease
+	for i := range *list {
+		x := &(*list)[i]
+		if x.Draft || x.Prerelease {
+			continue
+		}
+		if a, _ := setupAsset(x); a == "" {
+			continue
+		}
+		if best == nil || newerVersion(releaseVersion(x), releaseVersion(best)) {
+			best = x
+		}
+	}
+	if best == nil {
+		if runtime.GOOS == "darwin" {
+			return nil, errors.New("no Nagham for Mac release found on " + repo)
+		}
+		return nil, errors.New("no release with NaghamSetup.exe found on " + repo)
+	}
+	return best, nil
+}
+
+func ghGet[T any](repo, path string) (*T, error) {
+	req, _ := http.NewRequest("GET", ghAPI+"/repos/"+repo+path, nil)
 	req.Header.Set("Accept", "application/vnd.github+json")
 	req.Header.Set("User-Agent", "Nagham/"+appVersion)
 	resp, err := httpc.Do(req)
@@ -124,8 +165,8 @@ func latestRelease(repo string) (*ghRelease, error) {
 	default:
 		return nil, fmt.Errorf("GitHub error (HTTP %d)", resp.StatusCode)
 	}
-	var r ghRelease
-	if err := json.NewDecoder(io.LimitReader(resp.Body, 4<<20)).Decode(&r); err != nil {
+	var r T
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 8<<20)).Decode(&r); err != nil {
 		return nil, err
 	}
 	return &r, nil
