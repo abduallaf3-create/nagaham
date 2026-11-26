@@ -37,7 +37,7 @@
       if (i < 2) {
         const key = "recs" + i, ids = registerOnline(tr.slice(0, 18));
         setList(key, ids, { type: "chart", id: key, name: "More like " + s });
-        out += `<h2 class="sec">More like ${esc(s)} <span class="hint">songs in the same style</span></h2><div class="row-scroll">${ids.map((id, j) => songTile(id, key, j)).join("")}</div>`;
+        out += `<h2 class="sec">More like ${esc(s)} <span class="hint">songs in the same style</span> <a data-dllist="${key}">⤓ Download</a></h2><div class="row-scroll">${ids.map((id, j) => songTile(id, key, j)).join("")}</div>`;
       }
     });
     if (mix.length >= 4) {
@@ -45,7 +45,7 @@
       for (let i = 0; i < mix.length && pick.length < 20; i++) { const t = mix[(i * 7) % mix.length]; const k = (t.title + "|" + t.artist).toLowerCase(); if (!seen.has(k)) { seen.add(k); pick.push(t); } }
       const ids = registerOnline(pick);
       setList("recsmix", ids, { type: "chart", id: "recsmix", name: "Suggested for you" });
-      out = `<h2 class="sec">Suggested for you <span class="hint">singers you might like</span></h2><div class="row-scroll">${ids.map((id, j) => songTile(id, "recsmix", j)).join("")}</div>` + out;
+      out = `<h2 class="sec">Suggested for you <span class="hint">singers you might like</span> <a data-dllist="recsmix">⤓ Download</a></h2><div class="row-scroll">${ids.map((id, j) => songTile(id, "recsmix", j)).join("")}</div>` + out;
     }
     if (loading && !out) out = `<h2 class="sec">Suggested for you</h2>${skeletonRow()}`;
     return out;

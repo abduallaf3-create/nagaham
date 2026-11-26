@@ -180,6 +180,7 @@
   /* a playlist / album already in Nagham (yours, Spotify's, YouTube's): its songs, straight to the list */
   async function openCtx(key) {
     const i = key.indexOf(":"), type = key.slice(0, i), id = key.slice(i + 1);
+    if (type === "oartist") return openCtx("oartistall:" + id); // a singer: everything they made, not just the top songs
     let ids = ctxTracks(type, id);
     if (!ids.length) { // not opened yet: read its songs first
       const load = { spplaylist: () => spEnsure("pl:" + id, () => SPF.playlist(id)), spalbum: () => spEnsure("al:" + id, () => SPF.album(id)), spliked: () => spEnsure("liked", SPF.liked),
@@ -202,6 +203,22 @@
     openInfo({ kind: type.includes("album") ? "album" : "playlist", source: /^sp/.test(type) ? "spotify" : /^yt/.test(type) ? "youtube" : "nagham", title: name, cover, tracks, key: "ctx:" + key, link: "ctx:" + key, own: type === "playlist" ? id : "" });
     if ((nav.stack[nav.idx]?.view) !== "dl") go("dl"); else window.colDraw();
   }
+
+  // any list of songs (a For you shelf, suggestions, a chart…) → the download page, all ticked
+  window.downloadTracks = (name, ids, cover) => {
+    ids = (ids || []).filter(x => T(x));
+    if (!ids.length) return toast("No songs here");
+    const tracks = ids.map(x => T(x)).map(t => {
+      const s = { title: t.title, artist: t.artist === "YouTube" ? "" : t.artist, album: t.album || "", duration: t.fullDuration || t.duration || 0, cover: t.cover || t.coverSmall || "" };
+      if (!t.online) s.have = t.id;
+      else if (t.id.startsWith("yt:")) s.url = "https://music.youtube.com/watch?v=" + t.id.slice(3);
+      return s;
+    });
+    openInfo({ kind: "playlist", source: "nagham", title: name || "Songs", cover: cover || T(ids[0])?.cover || "", tracks, key: "list:" + name, link: "list:" + name, own: "" });
+    if ((nav.stack[nav.idx]?.view) !== "dl") go("dl"); else window.colDraw();
+  };
+  // a list made with setList (shelves on Home / For you)
+  window.downloadList = key => { const l = playLists[key]; if (!l) return toast("No songs here"); downloadTracks(l.ctx?.name || "Songs", l.ids); };
 
   async function downloadOpen() {
     const c = COL.open; if (!c) return;
@@ -272,7 +289,7 @@
   }
 
   /* ---------------------------------------------------------------- "Download all" on playlist / album pages */
-  const DLABLE = new Set(["playlist", "liked", "oalbum", "oartistall", "spplaylist", "spalbum", "spliked", "ytplaylist", "ytliked"]);
+  const DLABLE = new Set(["playlist", "liked", "oalbum", "oartistall", "oartist", "recent", "spplaylist", "spalbum", "spliked", "ytplaylist", "ytliked"]);
   const _actions = actions;
   actions = function (ctxKey, extra = "") {
     const type = String(ctxKey).slice(0, String(ctxKey).indexOf(":"));
@@ -289,6 +306,7 @@
     if (t.closest("[data-colback]")) { COL.open = null; COL.err = ""; drawAlbums(); return; }
     if (t.closest("[data-colall]")) return downloadOpen();
     const da = t.closest("[data-dlall]"); if (da) { e.stopPropagation(); return openCtx(da.dataset.dlall); }
+    const dk = t.closest("[data-dllist]"); if (dk) { e.stopPropagation(); e.preventDefault(); return downloadList(dk.dataset.dllist); }
     const c = t.closest("[data-colcancel]"); if (c) return cancelBatch(c.dataset.colcancel);
     const r = t.closest("[data-colretry]"); if (r) return retryBatch(r.dataset.colretry);
     const x = t.closest("[data-colclose]"); if (x) { const b = COL.batches.find(b => b.id === x.dataset.colclose); if (b) b.closed = true; drawBatches(); return; }

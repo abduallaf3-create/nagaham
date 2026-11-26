@@ -272,7 +272,7 @@ const VIEWS = {
     else if (c.data) {
       const d = c.data;
       // the chart is the worldwide one for everybody (not one country's)
-      if (d.chart?.length) { const ids = registerOnline(d.chart); setList("world", ids, { type: "chart", id: "world", name: "Worldwide top 50" }); out += `<h2 class="sec">Top songs worldwide <a data-go="discover">Show all</a></h2><div class="row-scroll">${ids.slice(0, 15).map((id, i) => songTile(id, "world", i)).join("")}</div>`; }
+      if (d.chart?.length) { const ids = registerOnline(d.chart); setList("world", ids, { type: "chart", id: "world", name: "Worldwide top 50" }); out += `<h2 class="sec">Top songs worldwide <a data-go="discover">Show all</a> <a data-dllist="world">⤓ Download</a></h2><div class="row-scroll">${ids.slice(0, 15).map((id, i) => songTile(id, "world", i)).join("")}</div>`; }
       if (d.releases?.length) out += `<h2 class="sec">New releases <a data-go="discover">Show all</a></h2><div class="row-scroll">${d.releases.slice(0, 15).map(oAlbumTile).join("")}</div>`;
     }
     if (lib.tracks.length) {

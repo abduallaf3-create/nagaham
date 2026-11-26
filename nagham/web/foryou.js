@@ -158,13 +158,14 @@
       const art = `<div class="art${it.t === "artist" ? " circle" : ""}">${imgHTML(proxImg(big(it.th)), it.b || it.list || it.sp || it.title, IC.disc)}</div>`;
       if (it.t === "artist") return `<div class="tile" data-fyartist="${esc(it.title)}">${art}<div class="name"><span>${esc(it.title)}</span></div><div class="sub">${esc(it.sub || "")}</div></div>`;
       const ref = `${svc}:${si}:${ii}`;
-      return `<div class="tile" data-fypl="${ref}">${art}<button class="play-big" data-fypl="${ref}">${IC.play}</button><div class="name"><span>${esc(it.title)}</span></div><div class="sub">${esc(it.sub || "")}</div></div>`;
+      return `<div class="tile" data-fypl="${ref}">${art}<button class="play-big" data-fypl="${ref}">${IC.play}</button><button class="fy-dl" data-fydl="${ref}" title="Download all its songs">⤓</button><div class="name"><span>${esc(it.title)}</span></div><div class="sub">${esc(it.sub || "")}</div></div>`;
     }).join("");
-    return `<h2 class="sec">${esc(sh.title)}${sh.strap ? ` <span class="hint">${esc(sh.strap)}</span>` : ""}</h2><div class="row-scroll">${tiles}</div>`;
+    const dl = songs.length ? ` <a data-dllist="${key}" title="Download these songs">⤓ Download</a>` : "";
+    return `<h2 class="sec">${esc(sh.title)}${sh.strap ? ` <span class="hint">${esc(sh.strap)}</span>` : ""}${dl}</h2><div class="row-scroll">${tiles}</div>`;
   }
-  async function playPl(svc, si, ii) {
+  async function playPl(svc, si, ii, download) {
     const it = FY[svc].data?.shelves?.[si]?.items?.[ii]; if (!it) return;
-    toast("Opening “" + it.title + "”…");
+    toast((download ? "Reading the songs of “" : "Opening “") + it.title + "”…");
     try {
       let songs = [];
       if (svc === "sp") {
@@ -177,10 +178,13 @@
       } else songs = (await ask({ svc, kind: "queue", id: it.list || "", b: it.b || "" })).songs || [];
       const ids = registerOnline(songs.map(fyTrack).filter(Boolean));
       if (!ids.length) return toast("No songs in “" + it.title + "”");
+      if (download) return downloadTracks(it.title, ids, big(it.th));
       playContext(ids, 0, { type: "chart", id: "fypl:" + (it.list || it.b || it.sp), name: it.title });
     } catch (e) { toast("Couldn't open it: " + e.message); }
   }
   $("#view").addEventListener("click", e => {
+    const fd = e.target.closest("[data-fydl]");
+    if (fd) { e.stopPropagation(); const [svc, si, ii] = fd.dataset.fydl.split(":"); playPl(svc, +si, +ii, true); return; }
     const p = e.target.closest("[data-fypl]");
     if (p) { e.stopPropagation(); const [svc, si, ii] = p.dataset.fypl.split(":"); playPl(svc, +si, +ii); return; }
     const a = e.target.closest("[data-fyartist]");
@@ -252,7 +256,9 @@
 .fy-tick{width:56px;height:56px;border-radius:50%;background:var(--accent);color:var(--on-accent,#fff);display:grid;place-items:center;font-size:28px;font-weight:800;margin-bottom:6px;animation:fypop .35s ease-out}
 @keyframes fypop{from{transform:scale(.4);opacity:0}}
 .fy-connect{display:inline-flex;align-items:center}
-.fy-card svg{color:var(--accent)}`;
+.fy-card svg{color:var(--accent)}
+.tile{position:relative}.fy-dl{position:absolute;top:14px;right:14px;width:30px;height:30px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:15px;font-weight:800;cursor:pointer;opacity:0;transition:opacity .15s}
+.tile:hover .fy-dl{opacity:1}.fy-dl:hover{background:var(--accent);color:var(--on-accent)}`;
   document.head.appendChild(st);
   const settingsLink = $('[data-nav="settings"]');
   if (settingsLink && !$('[data-nav="foryou"]') && !IOS) {

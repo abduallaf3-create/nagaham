@@ -540,6 +540,7 @@ func main() {
 	mux.HandleFunc("/api/ytm", ytmPanel)
 	mux.HandleFunc("/api/ytm/state", ytmState)
 	mux.HandleFunc("/api/ytm/js", ytmJSHandler)
+	mux.HandleFunc("/api/ytm/adjs", ytmAdJSHandler)
 	mux.HandleFunc("/api/yt/acct", ytAcctHandler)
 	mux.HandleFunc("/api/yt/acct/result", ytAcctResult)
 	mux.HandleFunc("/api/yt/acct/js", func(w http.ResponseWriter, r *http.Request) {

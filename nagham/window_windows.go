@@ -139,25 +139,25 @@ var (
 )
 
 type windowState struct {
-	V          int      `json:"v"`
-	Caption    string   `json:"caption"`
-	Text       string   `json:"text"`
-	Dark       bool     `json:"dark"`
-	Title      string   `json:"title"`
-	YtmURL     string   `json:"ytmUrl"`
-	YtmRect    [4]int   `json:"ytmRect"`
-	YtmVisible bool     `json:"ytmVisible"`
-	YtmHidden  bool     `json:"ytmHidden"`
-	Mini       bool     `json:"mini"`
-	ShowSeq    int      `json:"showSeq"`
-	YtmCmds    []ytmCmd `json:"ytmCmds"`
-	YtmCmdSeq  int      `json:"ytmCmdSeq"`
-	YtmVol     float64  `json:"ytmVol"`
-	YtmVolSet  bool     `json:"ytmVolSet"`
-	AcctOpen   bool      `json:"acctOpen"`   // the YouTube Music account page (For you) exists
-	AcctShow   bool      `json:"acctShow"`   // ...and is shown (to sign in)
-	AcctRect   [4]int    `json:"acctRect"`   // where, in physical pixels
-	AcctNav    string    `json:"acctNav"`    // a page to open in it
+	V          int       `json:"v"`
+	Caption    string    `json:"caption"`
+	Text       string    `json:"text"`
+	Dark       bool      `json:"dark"`
+	Title      string    `json:"title"`
+	YtmURL     string    `json:"ytmUrl"`
+	YtmRect    [4]int    `json:"ytmRect"`
+	YtmVisible bool      `json:"ytmVisible"`
+	YtmHidden  bool      `json:"ytmHidden"`
+	Mini       bool      `json:"mini"`
+	ShowSeq    int       `json:"showSeq"`
+	YtmCmds    []ytmCmd  `json:"ytmCmds"`
+	YtmCmdSeq  int       `json:"ytmCmdSeq"`
+	YtmVol     float64   `json:"ytmVol"`
+	YtmVolSet  bool      `json:"ytmVolSet"`
+	AcctOpen   bool      `json:"acctOpen"` // the YouTube Music account page (For you) exists
+	AcctShow   bool      `json:"acctShow"` // ...and is shown (to sign in)
+	AcctRect   [4]int    `json:"acctRect"` // where, in physical pixels
+	AcctNav    string    `json:"acctNav"`  // a page to open in it
 	AcctNavSeq int       `json:"acctNavSeq"`
 	AcctReqs   []acctReq `json:"acctReqs"`
 	AcctReqSeq int       `json:"acctReqSeq"`
@@ -215,6 +215,8 @@ func ytmClose() {
 	comCall(ctrl, 2)
 }
 
+var ytmCreateH, ytmAdH *comHandler
+
 func applyYtmPanel() {
 	themeMu.Lock()
 	st := themeState
@@ -229,24 +231,32 @@ func applyYtmPanel() {
 	if ytmCtrl == 0 {
 		if st.YtmURL != "" && (st.YtmVisible || st.YtmHidden) && !ytmCreating {
 			ytmCreating = true
-			h := newHandler(func(this, hr, controller uintptr) uintptr {
-				ytmCreating = false
-				if hr != 0 || controller == 0 {
-					logf("ytm panel controller failed: 0x%x", hr)
+			if ytmCreateH == nil { // made once: Windows allows only so many callbacks, and a new player is made for every song
+				ytmCreateH = newHandler(func(this, hr, controller uintptr) uintptr {
+					ytmCreating = false
+					if hr != 0 || controller == 0 {
+						logf("ytm panel controller failed: 0x%x", hr)
+						return 0
+					}
+					comCall(controller, 1)
+					var core uintptr
+					comCall(controller, 25, uintptr(unsafe.Pointer(&core)))
+					if core == 0 {
+						return 0
+					}
+					comCall(core, 1)
+					ytmCtrl, ytmCore = controller, core
+					// no ads: YouTube's answers are cleaned before its own code sees them
+					adJS, _ := syscall.UTF16PtrFromString(ytmAdJS)
+					if ytmAdH == nil {
+						ytmAdH = newHandler(func(this, hr, id uintptr) uintptr { return 0 })
+					}
+					comCall(core, 27, uintptr(unsafe.Pointer(adJS)), uintptr(unsafe.Pointer(ytmAdH))) // AddScriptToExecuteOnDocumentCreated
+					applyYtmPanel()
 					return 0
-				}
-				comCall(controller, 1)
-				var core uintptr
-				comCall(controller, 25, uintptr(unsafe.Pointer(&core)))
-				if core == 0 {
-					return 0
-				}
-				comCall(core, 1)
-				ytmCtrl, ytmCore = controller, core
-				applyYtmPanel()
-				return 0
-			})
-			if r := comCall(wvEnv, 3, wvHwnd, uintptr(unsafe.Pointer(h))); r != 0 {
+				})
+			}
+			if r := comCall(wvEnv, 3, wvHwnd, uintptr(unsafe.Pointer(ytmCreateH))); r != 0 {
 				ytmCreating = false
 				logf("ytm panel create failed: 0x%x", r)
 			}

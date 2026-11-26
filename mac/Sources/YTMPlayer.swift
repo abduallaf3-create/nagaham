@@ -16,6 +16,7 @@ final class YTMPlayer: NSObject, WKNavigationDelegate, WKUIDelegate {
     private var pollAt = Date.distantPast
     private var timer: Timer?
     private var adRules: WKContentRuleList?
+    private var adJS = ""
 
     init(host: NSView, below: NSView) {
         self.host = host
@@ -38,6 +39,7 @@ final class YTMPlayer: NSObject, WKNavigationDelegate, WKUIDelegate {
     func start(base: String) {
         self.base = base
         loadStateJS()
+        loadAdJS()
         timer = Timer.scheduledTimer(withTimeInterval: 0.45, repeats: true) { [weak self] _ in self?.poll() }
         RunLoop.main.add(timer!, forMode: .common)
     }
@@ -50,6 +52,19 @@ final class YTMPlayer: NSObject, WKNavigationDelegate, WKUIDelegate {
                 DispatchQueue.main.async { self.stateJS = s }
             } else {
                 DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.loadStateJS() }
+            }
+        }.resume()
+    }
+
+    // takes the ads out of what YouTube sends, before YouTube's own code runs
+    private func loadAdJS() {
+        guard let u = URL(string: base + "/api/ytm/adjs") else { return }
+        URLSession.shared.dataTask(with: u) { [weak self] data, _, _ in
+            guard let self = self else { return }
+            if let d = data, let s = String(data: d, encoding: .utf8), s.contains("__ngNoAds") {
+                DispatchQueue.main.async { self.adJS = s }
+            } else {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1) { self.loadAdJS() }
             }
         }.resume()
     }
@@ -82,6 +97,7 @@ final class YTMPlayer: NSObject, WKNavigationDelegate, WKUIDelegate {
         cfg.mediaTypesRequiringUserActionForPlayback = []
         cfg.websiteDataStore = .default() // a YouTube sign-in stays
         if let r = adRules { cfg.userContentController.add(r) }
+        if !adJS.isEmpty { cfg.userContentController.addUserScript(WKUserScript(source: adJS, injectionTime: .atDocumentStart, forMainFrameOnly: false)) }
         // full size but behind Nagham's page: never seen, still "on screen" so it keeps playing
         let w = WKWebView(frame: host.bounds, configuration: cfg)
         w.autoresizingMask = [.width, .height]
