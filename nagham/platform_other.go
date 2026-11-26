@@ -32,3 +32,5 @@ func defaultMusicDir() string {
 	}
 	return ""
 }
+
+func installUpdate(string) error { return errors.New("updating isn't available on this system") }

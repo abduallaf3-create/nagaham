@@ -3,6 +3,7 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"os"
 	"os/exec"
@@ -143,4 +144,12 @@ func defaultMusicDir() string {
 		}
 	}
 	return ""
+}
+
+// installUpdate starts the downloaded installer (it closes this copy and opens the new one)
+func installUpdate(setup string) error {
+	if err := exec.Command(setup, "/S", "/launch").Start(); err != nil {
+		return errors.New("couldn't start the installer: " + err.Error())
+	}
+	return nil
 }

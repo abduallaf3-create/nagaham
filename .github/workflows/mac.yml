@@ -62,6 +62,39 @@ jobs:
           osascript -e 'quit app "Nagham"' || true
           sleep 3; pgrep -fl nagham-server | tee mac/check/after-quit.txt || echo "server stopped" | tee mac/check/after-quit.txt
 
+      - name: Try the Mac self-update (a pretend newer release, served on this Mac)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -x
+          mkdir -p mac/check /tmp/rel/repos/abduallaf3-create/nagaham/releases
+          D="$HOME/Library/Application Support/Nagham"
+          ZIP="$(ls mac/build/Nagham-mac-*.zip | head -1)"
+          cp "$ZIP" /tmp/rel/Nagham-mac-9.9.9.zip
+          SIZE=$(stat -f %z /tmp/rel/Nagham-mac-9.9.9.zip)
+          cat > /tmp/rel/repos/abduallaf3-create/nagaham/releases/latest <<JSON
+          {"tag_name":"v9.9.9","name":"test","body":"test","html_url":"x","assets":[{"name":"Nagham-mac-9.9.9.zip","browser_download_url":"http://127.0.0.1:8765/Nagham-mac-9.9.9.zip","size":$SIZE}]}
+          JSON
+          (cd /tmp/rel && python3 -m http.server 8765 >/tmp/rel.log 2>&1 &)
+          rm -rf /Applications/Nagham.app && ditto -x -k "$ZIP" /Applications/
+          BEFORE=$(stat -f %i /Applications/Nagham.app)
+          rm -f "$D/port"
+          open --env NAGHAM_GH_API=http://127.0.0.1:8765 --env NAGHAM_TEST_DLHOST=127.0.0.1:8765 /Applications/Nagham.app
+          for i in $(seq 1 60); do [ -s "$D/port" ] && break; sleep 1; done
+          B="http://127.0.0.1:$(cat "$D/port")"
+          curl -s "$B/api/update/check" | tee mac/check/update-check.json; echo
+          rm -f "$D/port"
+          curl -s -X POST "$B/api/update/install" | tee mac/check/update-install.json; echo
+          for i in $(seq 1 60); do [ -s "$D/port" ] && break; sleep 1; done
+          sleep 3
+          AFTER=$(stat -f %i /Applications/Nagham.app)
+          { echo "app folder before=$BEFORE after=$AFTER"; [ "$BEFORE" != "$AFTER" ] && echo "SWAPPED" || echo "NOT swapped";
+            [ -s "$D/port" ] && echo "new Nagham running on port $(cat "$D/port")" || echo "Nagham did NOT come back";
+            ls /Applications | grep -i nagham; pgrep -fl "Nagham.app/Contents/MacOS" ; tail -5 "$D/update.log" 2>/dev/null; } | tee mac/check/update-result.txt
+          screencapture -x mac/check/3-after-update.png || true
+          osascript -e 'quit app "Nagham"' || true
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:

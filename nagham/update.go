@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -141,6 +140,12 @@ func setupAssetNamed(r *ghRelease) (string, int64, string) {
 	best, size, name := "", int64(0), ""
 	for _, a := range r.Assets {
 		n := strings.ToLower(a.Name)
+		if runtime.GOOS == "darwin" { // the Mac app: Nagham-mac-<version>.zip
+			if strings.HasSuffix(n, ".zip") && strings.Contains(n, "mac") {
+				best, size, name = a.URL, a.Size, a.Name
+			}
+			continue
+		}
 		if !strings.HasSuffix(n, ".exe") {
 			continue
 		}
@@ -186,15 +191,15 @@ func updateCheck(w http.ResponseWriter, r *http.Request) {
 	out["page"] = rel.Page
 	out["asset"] = asset != ""
 	out["size"] = size
-	out["newer"] = newerVersion(releaseVersion(rel), appVersion) && asset != "" && runtime.GOOS == "windows"
-	if runtime.GOOS == "darwin" && newerVersion(releaseVersion(rel), appVersion) {
-		out["note"] = "A newer Nagham is out — on the Mac, download the new Nagham for Mac and replace the app"
-	}
+	out["newer"] = newerVersion(releaseVersion(rel), appVersion) && asset != "" && (runtime.GOOS == "windows" || runtime.GOOS == "darwin")
 	writeJSON(w, out)
 }
 
 func allowedDownload(u string) bool {
 	p, err := url.Parse(u)
+	if err == nil && os.Getenv("NAGHAM_TEST_DLHOST") != "" && p.Host == os.Getenv("NAGHAM_TEST_DLHOST") { // tests only
+		return true
+	}
 	if err != nil || p.Scheme != "https" {
 		return false
 	}
@@ -252,7 +257,11 @@ func updateInstall(w http.ResponseWriter, r *http.Request) {
 	}
 	asset, size := setupAsset(rel)
 	if asset == "" || !allowedDownload(asset) {
-		http.Error(w, "this release has no NaghamSetup.exe attached", 400)
+		if runtime.GOOS == "darwin" {
+			http.Error(w, "this release has no Nagham-mac zip attached", 400)
+		} else {
+			http.Error(w, "this release has no NaghamSetup.exe attached", 400)
+		}
 		return
 	}
 	if !newerVersion(releaseVersion(rel), appVersion) {
@@ -288,6 +297,9 @@ func updateInstall(w http.ResponseWriter, r *http.Request) {
 		dir := filepath.Join(os.TempDir(), "NaghamUpdate")
 		os.MkdirAll(dir, 0o755)
 		dst := filepath.Join(dir, "NaghamSetup-"+ver+".exe")
+		if runtime.GOOS == "darwin" {
+			dst = filepath.Join(dir, "Nagham-mac-"+ver+".zip")
+		}
 		f, err := os.Create(dst)
 		if err != nil {
 			fail(err.Error())
@@ -328,8 +340,8 @@ func updateInstall(w http.ResponseWriter, r *http.Request) {
 		setUpd("stage", "install", "pct", 100, "version", ver)
 		updLog("installing %s from %s", ver, dst)
 		time.Sleep(900 * time.Millisecond) // let the page show "installing"
-		if err := exec.Command(dst, "/S", "/launch").Start(); err != nil {
-			fail("couldn't start the installer: " + err.Error())
+		if err := installUpdate(dst); err != nil {
+			fail(err.Error())
 			return
 		}
 		// the installer closes this copy; if it hasn't after a while, something stopped it
