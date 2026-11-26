@@ -83,6 +83,9 @@ jobs:
           open --env NAGHAM_GH_API=http://127.0.0.1:8765 --env NAGHAM_TEST_DLHOST=127.0.0.1:8765 /Applications/Nagham.app
           for i in $(seq 1 60); do [ -s "$D/port" ] && break; sleep 1; done
           B="http://127.0.0.1:$(cat "$D/port")"
+          curl -s -m 5 http://127.0.0.1:8765/repos/abduallaf3-create/nagaham/releases/latest | head -c 200 | tee mac/check/update-fake.txt; echo
+          ps eww -p "$(pgrep -f 'MacOS/nagham-server' | head -1)" | tr ' ' '\n' | grep NAGHAM | tee -a mac/check/update-fake.txt
+          cat /tmp/rel.log | tee -a mac/check/update-fake.txt
           curl -s "$B/api/update/check" | tee mac/check/update-check.json; echo
           rm -f "$D/port"
           curl -s -X POST "$B/api/update/install" | tee mac/check/update-install.json; echo
