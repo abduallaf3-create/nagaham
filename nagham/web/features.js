@@ -388,9 +388,13 @@ function clip(g, s, w) { s = String(s || ""); if (g.measureText(s).width <= w) r
 
 /* ============================================================ mini player + remote control */
 let rcLast = "", rcTimer = 0;
+let rcCss = null, rcCssAt = 0;
 function publishRemote(force) {
+  if (!force && document.hidden && E.paused) return;
   const t = T(P.current);
-  const cs = getComputedStyle(document.documentElement);
+  // the theme colours: read now and then, not every second (reading styles makes the page recalculate)
+  if (!rcCss || force || Date.now() - rcCssAt > 15000) { rcCss = getComputedStyle(document.documentElement); rcCssAt = Date.now(); }
+  const cs = rcCss;
   const st = {
     id: P.current || "", title: t?.title || "", artist: t?.artist || "", cover: t ? (coverOf(t.id) || "") : "",
     playing: !E.paused, t: Math.round((E.time || 0) * 10) / 10, d: Math.round((E.duration || t?.duration || 0) * 10) / 10,

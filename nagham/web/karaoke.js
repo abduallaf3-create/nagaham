@@ -459,7 +459,7 @@ if (typeof renderTime === "function") {
   const rt = renderTime;
   renderTime = function (...a) { const r = rt.apply(this, a); if (settings.remain) { const d = E.duration || T(P.current)?.duration || 0; if (d) $("#dur").textContent = $("#fDur").textContent = "-" + fmt(Math.max(0, d - (E.time || 0))); } return r; };
 }
-for (const id of ["#dur", "#fDur"]) { const el = $(id); el.style.cursor = "pointer"; el.title = "Click to switch between the song length and the time left"; el.addEventListener("click", () => { settings.remain = !settings.remain; saveUser(); renderTime(); }); }
+for (const id of ["#dur", "#fDur"]) { const el = $(id); el.style.cursor = "pointer"; el.title = "Click to switch between the song length and the time left"; el.addEventListener("click", () => { settings.remain = !settings.remain; saveUser(); renderTime(true); }); }
 /* “add to playlist” right in the player bar */
 if (typeof renderNP === "function") {
   const rn = renderNP;

@@ -15,6 +15,9 @@ const ytmStateJS = `(() => { try {
     const sk = document.querySelector('.ytp-ad-skip-button, .ytp-ad-skip-button-modern, .ytp-skip-ad-button, button[class*="skip"]'); if (sk) sk.click();
   } else if (v && window.__ngAdMute) { window.__ngAdMute = 0; v.playbackRate = 1; if (!window.__ngMuted) v.muted = false; }
   const pop = document.querySelector('ytmusic-mealbar-promo-renderer'); if (pop) { const b = pop.querySelector('#dismiss-button button, #dismiss-button, yt-button-renderer:last-child button'); if (b) try { b.click(); } catch (e) {} } // "try Premium" banners
+  if (mp && mp.setPlaybackQualityRange && window.__ngQ !== q.get('v')) { // the video is never seen: the smallest picture (much less work for the PC)
+    try { mp.setPlaybackQualityRange('tiny', 'tiny'); if (mp.setPlaybackQuality) mp.setPlaybackQuality('tiny'); window.__ngQ = q.get('v'); } catch (e) {}
+  }
   if (v && !v.__ng) { v.__ng = 1;
     v.addEventListener('volumechange', () => { const w = window.__ngVol; if (w >= 0 && Math.abs(v.volume - w) > .004) v.volume = w; });
     v.addEventListener('ended', () => { const p = document.querySelector('#movie_player'); if (p && p.classList.contains('ad-showing')) return; window.__ngEnd = 1; window.__ngEndVid = new URLSearchParams(location.search).get('v'); });

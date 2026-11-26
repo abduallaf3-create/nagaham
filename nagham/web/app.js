@@ -729,7 +729,7 @@ async function playElsewhere(id, startAt = 0, gen) {
     await ytmApi({ url: url + "&nagham=" + P.gen, hidden: true, visible: false, vol: Math.max(0, Math.min(1, effVol())) });
     ytmWatchLoad(P.gen, url);
     showYtMini(false); syncYtmRect(true);
-    renderPP(); renderNP(); renderTime(); markPlaying(); discordUpdate(true);
+    renderPP(); renderNP(); renderTime(true); markPlaying(); discordUpdate(true);
     return;
   }
   let w = null;
@@ -823,7 +823,7 @@ setInterval(async () => {
   ytmPolling = true;
   try { const r = await api("/api/ytm/state"); if (r?.state && r.act) r.state.act = r.act; onYtmState(r?.state); } catch {} finally { ytmPolling = false; }
 }, 500);
-setInterval(() => { if (extOn() && EXT.playing && EXT.sawPlay) renderTime(); }, 250);
+setInterval(() => { if (extOn() && EXT.playing && EXT.sawPlay) renderTime(); }, 500);
 setInterval(() => { if (extOn() && EXT.playing && !EXT.sawPlay) checkYtmStuck(); }, 2000);
 /* show / hide the YouTube Music page (the music keeps playing either way) */
 function showYtVideo(on, temp) {
@@ -948,13 +948,18 @@ audio.addEventListener("timeupdate", () => { if (E.mode === "audio") onEngineTim
 const seek = $("#seek"), fSeek = $("#fSeek"), vol = $("#vol");
 let seeking = false;
 function setP(el) { el.style.setProperty("--p", (el.value - el.min) / (el.max - el.min) * 100 + "%"); }
-function renderTime() {
+let rtAt = 0;
+function renderTime(force) {
+  // the time and the bar: at most twice a second, and not at all while Nagham can't be seen
+  if (!force && (document.hidden || Date.now() - rtAt < 450)) return;
+  rtAt = Date.now();
   const d = E.duration || T(P.current)?.duration || 0;
   const cur = fmt(E.time || 0).replace("–:––", "0:00");
   $("#dur").textContent = $("#fDur").textContent = fmt(d);
   if (!seeking) {
     $("#cur").textContent = $("#fCur").textContent = cur;
-    for (const s of [seek, fSeek]) { s.value = d ? E.time / d * 1000 : 0; setP(s); }
+    const full = $("#full").classList.contains("open");
+    for (const s of full ? [seek, fSeek] : [seek]) { s.value = d ? E.time / d * 1000 : 0; setP(s); }
   }
 }
 for (const s of [seek, fSeek]) {
@@ -1087,7 +1092,7 @@ function renderFull() {
   $("#fLike").classList.toggle("on", liked);
   const nx = P.upNext[0] || (P.opos + 1 < P.order.length ? P.ctx[P.order[P.opos + 1]] : null);
   $("#fNextUp").textContent = nx && T(nx) ? `Next: ${T(nx).title} • ${T(nx).artist}` : "";
-  renderPP(); renderTime();
+  renderPP(); renderTime(true);
 }
 $("#fClose").onclick = () => toggleFull(false);
 $("#fLike").onclick = () => P.current && toggleLike([P.current]);
@@ -1261,3 +1266,4 @@ fetch("/api/ping").catch(() => {});
 })();
 
 window.naghamAuthDone = () => {};
+document.addEventListener("visibilitychange", () => { if (!document.hidden) try { renderTime(true); } catch {} });
