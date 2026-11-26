@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleName</key><string>Nagham</string>
+	<key>CFBundleDisplayName</key><string>Nagham</string>
+	<key>CFBundleIdentifier</key><string>app.nagham.mac</string>
+	<key>CFBundleExecutable</key><string>Nagham</string>
+	<key>CFBundlePackageType</key><string>APPL</string>
+	<key>CFBundleShortVersionString</key><string>__VERSION__</string>
+	<key>CFBundleVersion</key><string>__BUILD__</string>
+	<key>CFBundleIconFile</key><string>AppIcon</string>
+	<key>LSMinimumSystemVersion</key><string>12.0</string>
+	<key>LSApplicationCategoryType</key><string>public.app-category.music</string>
+	<key>NSHighResolutionCapable</key><true/>
+	<key>NSPrincipalClass</key><string>NSApplication</string>
+	<key>NSSupportsAutomaticGraphicsSwitching</key><true/>
+	<key>NSMicrophoneUsageDescription</key><string>Nagham uses the microphone for karaoke.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key><true/>
+	</dict>
+</dict>
+</plist>

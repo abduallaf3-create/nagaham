@@ -140,7 +140,7 @@ async function resetLook() {
   if (!await confirm_("Reset the look to default?", "Theme, colours, style, animations and performance mode go back to the original. Your songs and playlists are not touched.", "Reset")) return;
   endPreview(false);
   if (settings.themeId !== "midnight") settings.prevThemeId = settings.themeId;
-  settings.themeId = "midnight"; settings.ov = {}; settings.dynamic = false; settings.effects = true; settings.anim = true; settings.perf = "auto";
+  settings.themeId = "midnight"; settings.ov = {}; settings.dynamic = false; settings.effects = true; settings.anim = true; settings.perf = "on";
   saveUser(); document.body.classList.add("theme-anim"); setTimeout(() => document.body.classList.remove("theme-anim"), 800);
   applyTheme(currentTheme()); detectPerf(); render(true); toast("Back to the default look");
 }

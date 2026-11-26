@@ -184,7 +184,7 @@ function measureFps(ms = 1200) {
   return new Promise(res => { let n = 0; const t0 = performance.now(); (function f() { n++; const dt = performance.now() - t0; if (dt < ms) requestAnimationFrame(f); else res(n * 1000 / dt); })(); });
 }
 async function detectPerf() {
-  const mode = settings.perf || "auto";
+  const mode = settings.perf || "on";
   if (mode === "on") return setLite(true);
   if (mode === "off") return setLite(false);
   let soft = false;
@@ -323,7 +323,7 @@ const themesBody = () => `
     ${switchRow("swFx", "Animated effects", "Falling petals, stars and moving light in the background", settings.effects !== false)}
     ${switchRow("swAnim", "Interface animations", "Smooth transitions, hover motion and playing effects", settings.anim !== false)}
     <div class="set-row"><div class="lbl"><b>Performance / battery saver</b><span>Turns off glass blur and moving effects so Nagham stays smooth on older PCs. Auto switches it on when your PC needs it.${document.body.classList.contains("lite") ? " <b style='color:var(--accent)'>On right now.</b>" : ""}</span></div>
-      <div class="seg" data-perf>${[["auto", "Auto"], ["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-v="${v}" class="${(settings.perf || "auto") === v ? "on" : ""}">${l}</button>`).join("")}</div></div>
+      <div class="seg" data-perf>${[["auto", "Auto"], ["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-v="${v}" class="${(settings.perf || "on") === v ? "on" : ""}">${l}</button>`).join("")}</div></div>
   </div>
   ${typeof lookPanel === "function" ? lookPanel() : ""}
   <h2 class="sec">Ready-made <span class="hint">Click a theme to try it, then keep it or cancel</span></h2>

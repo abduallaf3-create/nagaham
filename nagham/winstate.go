@@ -33,6 +33,13 @@ type winState struct {
 	YtmCmdSeq  int      `json:"ytmCmdSeq"`
 	YtmVol     float64  `json:"ytmVol"` // the volume the hidden YouTube Music page must keep (0..1)
 	YtmVolSet  bool     `json:"ytmVolSet"`
+	AcctOpen   bool      `json:"acctOpen"`   // the YouTube Music account page (For you) exists
+	AcctShow   bool      `json:"acctShow"`   // ...and is shown (to sign in)
+	AcctRect   [4]int    `json:"acctRect"`   // where, in physical pixels
+	AcctNav    string    `json:"acctNav"`    // a page to open in it
+	AcctNavSeq int       `json:"acctNavSeq"`
+	AcctReqs   []acctReq `json:"acctReqs"`
+	AcctReqSeq int       `json:"acctReqSeq"`
 }
 
 type ytmCmd struct {

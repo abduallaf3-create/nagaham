@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/fs"
 	"log"
 	"net"
@@ -467,8 +468,7 @@ func main() {
 	}
 
 	loadStore()
-	spLoad()
-	ytLoad()
+	dropLinkedAccounts()
 	dcLoad()
 	dcStart()
 	backupStart()
@@ -536,26 +536,19 @@ func main() {
 	mux.HandleFunc("/api/discord/status", discordStatus)
 	mux.HandleFunc("/api/discord/config", discordConfig)
 	mux.HandleFunc("/api/discord/activity", discordActivity)
-	mux.HandleFunc("/api/youtube/status", ytStatus)
-	mux.HandleFunc("/api/youtube/config", ytConfig)
-	mux.HandleFunc("/api/youtube/login", ytLoginStart)
-	mux.HandleFunc("/api/youtube/logout", ytLogout)
-	mux.HandleFunc("/api/youtube/keys", ytKeys)
-	mux.HandleFunc("/api/match", ytMatch)
 	mux.HandleFunc("/api/openurl", openURLHandler)
 	mux.HandleFunc("/api/ytm", ytmPanel)
 	mux.HandleFunc("/api/ytm/state", ytmState)
 	mux.HandleFunc("/api/ytm/js", ytmJSHandler)
+	mux.HandleFunc("/api/yt/acct", ytAcctHandler)
+	mux.HandleFunc("/api/yt/acct/result", ytAcctResult)
+	mux.HandleFunc("/api/yt/acct/js", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+		io.WriteString(w, acctJS)
+	})
 	mux.HandleFunc("/api/update/check", updateCheck)
 	mux.HandleFunc("/api/update/install", updateInstall)
 	mux.HandleFunc("/api/update/progress", updateProgress)
-	mux.HandleFunc("/api/youtube/v3/", ytProxy)
-	mux.HandleFunc("/api/spotify/status", spStatus)
-	mux.HandleFunc("/api/spotify/config", spConfig)
-	mux.HandleFunc("/api/spotify/login", spLoginStart)
-	mux.HandleFunc("/api/spotify/logout", spLogout)
-	mux.HandleFunc("/api/spotify/token", spToken)
-	mux.HandleFunc("/api/spotify/v1/", spProxy)
 
 	addr := os.Getenv("NAGHAM_ADDR")
 	if addr == "" {
@@ -590,6 +583,18 @@ func main() {
 	}
 
 	if os.Getenv("NAGHAM_HEADLESS") != "" {
+		if os.Getenv("NAGHAM_NATIVE") == "1" { // the Mac app is Nagham's window: it plays YouTube Music hidden, like the PC window
+			nativeWindowActive.Store(true)
+			go func() { // the Mac app went away (even if it crashed): stop too
+				for {
+					time.Sleep(2 * time.Second)
+					if os.Getppid() == 1 {
+						os.Remove(portFile)
+						os.Exit(0)
+					}
+				}
+			}()
+		}
 		select {}
 	}
 	if openWindow(url, true) {

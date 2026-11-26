@@ -11,7 +11,7 @@ function startOnboarding() {
   host.innerHTML = `<div class="ob-bg"><i></i><i></i><i></i></div>
     <button class="ob-skip" data-ob="skip">Skip setup</button>
     <div class="ob-card" id="obCard"></div>
-    <div class="ob-dots">${[0, 1, 2, 3, 4].map(i => `<span data-d="${i}"></span>`).join("")}</div>`;
+    <div class="ob-dots">${[0, 1, 2, 3].map(i => `<span data-d="${i}"></span>`).join("")}</div>`;
   obRender();
 }
 function obClose() {
@@ -22,14 +22,14 @@ function obClose() {
 function obRender(dir = 1) {
   const c = $("#obCard"); if (!c) return;
   $$(".ob-dots span").forEach((d, i) => d.classList.toggle("on", i <= obStep));
-  const steps = [obWelcome, obName, obTheme, obAccounts, obDone];
+  const steps = [obWelcome, obName, obTheme, obDone];
   c.classList.remove("in-l", "in-r"); void c.offsetWidth;
   try { c.innerHTML = steps[obStep](); }
   catch (e) { postLog("onboarding step " + obStep + ": " + e.stack); obFinish(false); return; }
   c.classList.add(dir > 0 ? "in-r" : "in-l");
   setTimeout(() => $("#obName")?.focus(), 350);
 }
-function obNext() { obStep = Math.min(4, obStep + 1); obRender(1); }
+function obNext() { obStep = Math.min(3, obStep + 1); obRender(1); }
 function obBack() { obStep = Math.max(0, obStep - 1); obRender(-1); }
 
 const obWave = () => `<div class="ob-wave">${Array.from({ length: 9 }, (_, i) => `<i style="--d:${(i * 0.11).toFixed(2)}s"></i>`).join("")}</div>`;
@@ -58,18 +58,6 @@ function obTheme() {
     <div class="ob-themes">${BUILTIN_THEMES.map((t, i) => `<div class="theme-card ob-tc ${settings.themeId === t.id ? "on" : ""}" data-obtheme="${t.id}" style="--i:${i}">${themePreview(t)}<div class="check">${IC.check}</div><div class="tc-info"><span>${esc(t.name)}</span></div></div>`).join("")}</div>
     <label class="ob-switch"><label class="switch"><input type="checkbox" id="obDyn" ${settings.dynamic ? "checked" : ""}><i></i></label><span><b>Colours follow the song</b><br><span class="muted">The app takes the colours of each song's cover</span></span></label>
     <div class="ob-actions"><button class="btn ghost" data-ob="back">Back</button><button class="btn accent" data-ob="next">Continue</button></div>
-  </div>`;
-}
-function obAccounts() {
-  const card = (k, logo, cls, title, text) => `<button class="ob-acct ${ob.link.has(k) ? "on" : ""}" data-oblink="${k}"><span class="acct-logo ${cls}">${logo}</span><span class="ob-acct-t"><b>${title}</b><span>${text}</span></span><span class="ob-tick">${IC.check}</span></button>`;
-  return `<div class="ob-center">
-    <h1 class="ob-title">Link your music?</h1>
-    <p class="ob-sub">Optional — Nagham works without it. Pick any you use and we'll walk you through linking after the tour.</p>
-    <div class="ob-accts">
-      ${card("yt", YT_LOGO, "yt", "YouTube Music", "Full songs from YouTube + your playlists")}
-      ${card("sp", SP_LOGO, "sp", "Spotify", "Your Spotify playlists and saved songs")}
-    </div>
-    <div class="ob-actions"><button class="btn ghost" data-ob="back">Back</button><button class="btn accent" data-ob="next">${ob.link.size ? "Continue" : "Skip for now"}</button></div>
   </div>`;
 }
 function obDone() {

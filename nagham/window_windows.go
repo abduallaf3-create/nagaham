@@ -66,6 +66,7 @@ const (
 	wmGetMinMaxInfo = 0x0024
 	wmApplyTheme    = 0x8001
 	wmYtmPoll       = 0x8002
+	wmAcctPoll      = 0x8003
 	wsOverlappedWin = 0x00CF0000
 	cwUseDefault    = 0x80000000
 )
@@ -153,6 +154,13 @@ type windowState struct {
 	YtmCmdSeq  int      `json:"ytmCmdSeq"`
 	YtmVol     float64  `json:"ytmVol"`
 	YtmVolSet  bool     `json:"ytmVolSet"`
+	AcctOpen   bool      `json:"acctOpen"`   // the YouTube Music account page (For you) exists
+	AcctShow   bool      `json:"acctShow"`   // ...and is shown (to sign in)
+	AcctRect   [4]int    `json:"acctRect"`   // where, in physical pixels
+	AcctNav    string    `json:"acctNav"`    // a page to open in it
+	AcctNavSeq int       `json:"acctNavSeq"`
+	AcctReqs   []acctReq `json:"acctReqs"`
+	AcctReqSeq int       `json:"acctReqSeq"`
 }
 
 // second WebView2 inside the same window, playing YouTube Music. Normally it is
@@ -330,6 +338,9 @@ func ytmPollLoop() {
 		if wvHwnd != 0 && ytmCore != 0 {
 			pPostMsg.Call(wvHwnd, wmYtmPoll, 0, 0)
 		}
+		if wvHwnd != 0 && (acctCtrl != 0 || acctWant) {
+			pPostMsg.Call(wvHwnd, wmAcctPoll, 0, 0)
+		}
 	}
 }
 
@@ -421,6 +432,8 @@ func applyWindowTheme() {
 		pSetText.Call(wvHwnd, uintptr(unsafe.Pointer(t)))
 	}
 }
+
+var wvVisNow uintptr = 1
 
 func resizeWebView() {
 	if wvController == 0 || wvHwnd == 0 {
@@ -630,6 +643,17 @@ func wndProc(hwnd, msg, wp, lp uintptr) uintptr {
 	}
 	switch msg {
 	case wmSize:
+		// minimized: the page stops drawing (no animations, no repaints) but keeps playing and keeps its timers
+		if wvController != 0 {
+			vis := uintptr(1)
+			if wp == 1 { // SIZE_MINIMIZED
+				vis = 0
+			}
+			if vis != wvVisNow {
+				wvVisNow = vis
+				comCall(wvController, 4, vis) // put_IsVisible
+			}
+		}
 		resizeWebView()
 		return 0
 	case wmMove:
@@ -651,12 +675,16 @@ func wndProc(hwnd, msg, wp, lp uintptr) uintptr {
 	case wmApplyTheme:
 		applyWindowTheme()
 		applyYtmPanel()
+		applyAcctPanel()
 		applyMini()
 		applyShow()
 		updateThumbbar()
 		return 0
 	case wmYtmPoll:
 		pollYtm()
+		return 0
+	case wmAcctPoll:
+		pollAcct()
 		return 0
 	case wmDestroy:
 		pPostQuit.Call(0)

@@ -32,7 +32,7 @@
   function albumsFrame() {
     return `<div class="settings-sec"><h3>Albums & playlists <span class="muted" style="font-size:14px;font-weight:400">ألبومات وقوائم كاملة</span></h3>
       <p class="muted" style="margin:6px 0 0">Search an album, an artist or a playlist — or paste a link from <b>Spotify</b>, <b>YouTube Music</b> (playlist or album: ⋮ → Share → Copy link), YouTube, Deezer or Apple Music.</p>
-      <p class="muted" style="margin:4px 0 0;font-size:13px">Private playlists: link your Spotify / YouTube account first (Settings → Linked accounts) — then they open from their link too.</p>
+      <p class="muted" style="margin:4px 0 0;font-size:13px">Private playlists can't be read: make the playlist public (or unlisted on YouTube), then paste its link.</p>
       <div class="field dl-box"><div class="dl-inwrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="margin:0"><circle cx="10.5" cy="10.5" r="6.5"/><path d="m20 20-4.5-4.5"/></svg><input class="input" id="colQ" placeholder="Album, artist, playlist — or paste a link…" spellcheck="false" autocomplete="off" value="${esc(COL.q)}"></div>
         <button class="btn accent" data-colsearch>Find</button></div>
       <div id="colRes"></div></div>`;

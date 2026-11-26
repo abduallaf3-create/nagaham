@@ -11,7 +11,7 @@ const SETTINGS_TABS = {
     </div>
     <div class="settings-sec"><h3>Getting started</h3>
       <div class="set-row"><div class="lbl"><b>Take the tour again</b><span>A quick walk through where everything is</span></div><button class="btn ghost sm" data-tour>Start tour</button></div>
-      <div class="set-row"><div class="lbl"><b>Run the welcome setup again</b><span>Name, theme and linked accounts</span></div><button class="btn ghost sm" data-onboard>Run setup</button></div>
+      <div class="set-row"><div class="lbl"><b>Run the welcome setup again</b><span>Name and theme</span></div><button class="btn ghost sm" data-onboard>Run setup</button></div>
     </div>`;
   },
   appearance() { return themesBody(); },
@@ -31,24 +31,19 @@ const SETTINGS_TABS = {
     </div>` + this.libraryHidden();
   },
   libraryHidden() {
+    if (!(settings.hiddenPl || []).length) return "";
     return `<div class="settings-sec"><h3>Hidden playlists</h3>
       <p class="muted" style="margin:4px 0 8px">Right-click any YouTube or Spotify playlist (or Liked music / Saved songs) and choose <b>Hide from Nagham</b>. Hidden ones are listed here.</p>
       ${(settings.hiddenPl || []).map(h => `<div class="folder"><span class="p">${esc(h.name)} <span class="muted" style="font-size:12px">· ${h.key.startsWith("yt") ? "YouTube Music" : "Spotify"}</span></span><button class="btn ghost sm" data-unhide="${esc(h.key)}">Show again</button></div>`).join("") || `<p class="muted">Nothing hidden.</p>`}
     </div>`;
   },
   accounts() {
-    const sp = SP.connected
-      ? `<div class="acct-row"><span class="acct-logo sp">${SP_LOGO}</span><div class="lbl" style="flex:1"><b>Spotify — ${esc(SP.user?.display_name || SP.user?.id || "")}</b><span>${SP.premium ? "Premium: full songs play in Nagham (needs the Classic window style)" : "Free account: your playlists and saved songs are in Your Library"}</span></div><button class="btn ghost sm" data-go="spotify">Open</button><button class="btn ghost sm" data-splogout>Unlink</button></div>`
-      : `<details class="acct" ${SP.waiting || SP.error ? "open" : ""}><summary><span class="acct-logo sp">${SP_LOGO}</span><div class="lbl" style="flex:1"><b>Spotify</b><span>Bring in your Spotify playlists and saved songs</span></div><span class="btn ghost sm">Link</span></summary><div class="acct-body">${spSetupCard()}</div></details>`;
-    return `<div class="settings-sec"><h3>Linked accounts <span class="muted" style="font-size:13px;font-weight:600">(optional — not needed to listen)</span></h3>
-      <div class="acct-list">${ytAccountCard()}${sp}${IOS ? "" : discordCard()}</div></div>`;
+    return IOS ? "" : `<div class="settings-sec"><h3>Discord</h3><div class="acct-list">${discordCard()}</div></div>`;
   },
   playback() {
     return `<div class="settings-sec"><h3>Playback</h3>
       <div class="set-row"><div class="lbl"><b>Your country</b><span>Used for "Top songs" on the home page and for search</span></div>
         <select class="input" id="countrySel" style="flex:0 0 200px">${Object.entries(COUNTRIES).map(([k, v]) => `<option value="${k}" ${settings.country === k ? "selected" : ""}>${v}</option>`).join("")}</select></div>
-      <div class="set-row"><div class="lbl"><b>Full songs from YouTube</b><span>${YTM.connected ? "Nagham finds each song on YouTube and plays it in full. Each new song uses one YouTube search (about 100 a day); songs you've played before are remembered." : "Link YouTube Music (Linked accounts) and songs that normally play 30 seconds will play in full."}</span></div>
-        <label class="switch"><input type="checkbox" id="swYtFull" ${settings.ytFull !== false ? "checked" : ""} ${YTM.connected ? "" : "disabled"}><i></i></label></div>
       <div class="set-row"><div class="lbl"><b>Songs YouTube won't play inside Nagham</b><span>Many music videos are blocked by YouTube in other apps. Open them in full in a YouTube Music window, or skip them. (Nagham never plays 30-second clips.)</span></div>
         <div class="seg" data-elsewhere>${[["open", "Open in YouTube Music"], ["skip", "Skip"]].map(([v, l]) => `<button data-v="${v}" class="${(settings.elsewhere || "open") === v ? "on" : ""}">${l}</button>`).join("")}</div></div>
 ${IOS ? "" : `      <div class="set-row"><div class="lbl"><b>YouTube Music window</b><span>Size and where it opens. Small is a compact player you can keep beside Nagham.</span></div>
@@ -61,7 +56,7 @@ ${IOS ? "" : `      <div class="set-row"><div class="lbl"><b>YouTube Music windo
 `}      <div class="set-row"><div class="lbl"><b>Open a code from a friend</b><span>Songs, playlists and themes — or just press Ctrl+V anywhere</span></div><button class="btn ghost sm" data-opencode>Enter code</button></div>
     </div>
 ${IOS ? "" : `    <div class="settings-sec"><h3>Window</h3>
-      <div class="set-row"><div class="lbl"><b>Window style</b><span>Themed: the title bar takes your theme's colours (Windows 11). Classic: a standard Edge window (needed for full Spotify Premium playback). Applies next time you open Nagham.</span></div>
+      <div class="set-row"><div class="lbl"><b>Window style</b><span>Themed: the title bar takes your theme's colours (Windows 11). Classic: a standard Edge window. Applies next time you open Nagham.</span></div>
         <div class="seg" data-winmode><button data-v="themed" class="${settings.windowMode !== "classic" ? "on" : ""}">Themed</button><button data-v="classic" class="${settings.windowMode === "classic" ? "on" : ""}">Classic</button></div></div>
     </div>`}`;
   },
@@ -84,8 +79,8 @@ ${IOS ? `<div class="set-row"><div class="lbl"><b>Updates</b><span>${IOSUPD.late
         <div class="field" style="margin:0;max-width:300px"><input class="input" id="updRepo" placeholder="owner/Nagham" spellcheck="false" value="${esc(settings.updateRepo || UPD.info?.repo || "")}"><button class="btn sm ghost" data-updsave>Save</button></div></div>
 `}
       ${backupRows()}
-      <div class="set-row"><div class="lbl"><b>Your data</b><span>Playlists, likes, themes and linked accounts are stored only on this ${IOS ? "iPhone" : "computer, in %APPDATA%\\Nagham"}</span></div></div>
-      <div class="set-row"><div class="lbl"><b>Song catalogue</b><span>Song info and charts: Deezer & Apple Music. Free full songs: Audius. Linked accounts: YouTube Music, Spotify.</span></div></div>
+      <div class="set-row"><div class="lbl"><b>Your data</b><span>Playlists, likes and themes are stored only on this ${IOS ? "iPhone" : "computer, in %APPDATA%\\Nagham"}</span></div></div>
+      <div class="set-row"><div class="lbl"><b>Song catalogue</b><span>Song info and charts: Deezer & Apple Music. Free full songs: Audius.</span></div></div>
     </div>`;
   },
 };
@@ -115,21 +110,7 @@ $("#view").addEventListener("change", e => {
   if (e.target.id === "swYtFull") { settings.ytFull = e.target.checked; saveUser(); toast(settings.ytFull ? "Full songs from YouTube: on" : "Full songs from YouTube: off"); } });
 $("#view").addEventListener("keydown", e => { if (e.key === "Enter" && e.target.id === "nameIn") $("[data-savename]")?.click(); });
 
-/* playlists from linked accounts, for Your Library */
-function linkedPlaylistTiles() {
-  let h = "";
-  if (YTM.connected) {
-    const c = ytLoad("myplaylists", YTF.myplaylists);
-    if (!isHidden("ytliked:")) h += `<div class="tile" data-go="ytliked"><div class="art"><div class="art-ph" style="background:linear-gradient(135deg,#ff4e45,#8a1c17)">${YT_LOGO}</div></div><button class="play-big" data-playctx="ytliked:">${IC.play}</button><div class="name"><span>Liked music</span></div><div class="sub">YouTube Music</div></div>`;
-    for (const p of c.data || []) if (!isHidden("ytplaylist:" + p.id)) h += ytPlaylistTile(p);
-  }
-  if (SP.connected) {
-    const c = spLoad("myplaylists", SPF.myplaylists);
-    if (!isHidden("spliked:")) h += `<div class="tile" data-go="spliked"><div class="art">${likedArt()}</div><button class="play-big" data-playctx="spliked:">${IC.play}</button><div class="name"><span>Saved songs</span></div><div class="sub">Spotify</div></div>`;
-    for (const p of c.data || []) if (!isHidden("spplaylist:" + p.id)) h += spPlaylistTile(p);
-  }
-  return h;
-}
+function linkedPlaylistTiles() { return ""; } // (linked accounts were removed)
 
 /* the round "you" button in the top bar */
 function renderMe() {
@@ -147,7 +128,6 @@ $("#meBtn").onclick = e => {
     { label: "Enter a code from a friend", icon: IC.share, act: () => openCodeDialog() },
     { label: (settings.dynamic ? "✓ " : "") + "Colours follow the song", icon: IC.palette, act: () => setDynamic(!settings.dynamic) },
     { label: "Themes", icon: IC.palette, act: () => go("settings", "appearance") },
-    { label: "Linked accounts", icon: IC.share, act: () => go("settings", "accounts") },
     "-",
     { label: "Settings", icon: IC.dots, act: () => go("settings") },
     { label: "Take the tour", icon: IC.info, act: () => startTour() },

@@ -87,7 +87,6 @@ const norm = s => (s || "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim(
 async function resolveRef(ref) {
   if (typeof ref === "string") return (await fetchOnlineTrack(ref).catch(() => null))?.id || null;
   const [title, artist, spId] = ref;
-  if (spId && spId.startsWith("sp:") && SP.connected) { const id = await spGetTrack(spId).catch(() => null); if (id) return id; }
   if (spId && spId.startsWith("yt:")) { const v = spId.slice(3); return registerOnline([{ id: spId, src: "yt", youtube: true, online: true, title, artist: artist || "", album: "", cover: `https://i.ytimg.com/vi/${v}/hqdefault.jpg`, duration: 0 }])[0]; }
   const local = lib.tracks.find(t => norm(t.title) === norm(title) && (!artist || norm(t.artist) === norm(artist)))
     || lib.tracks.find(t => norm(t.title) === norm(title));
@@ -142,11 +141,7 @@ async function handleCode(c, out, done) {
   } else if (c.type === "yt") {
     await playYouTubeLink(c.vid, out, done);
   } else if (c.type === "k") {
-    await api("/api/youtube/config", { clientId: c.id, clientSecret: c.secret });
-    await ytRefreshStatus(); done(true);
-    toast("YouTube keys added — click Link YouTube Music");
-    go("settings", "accounts");
-    setTimeout(() => { const d = [...document.querySelectorAll("details.acct")].find(d => d.innerHTML.includes("YouTube")); if (d) d.open = true; }, 150);
+    done(true); toast("YouTube account linking isn't in Nagham any more — you don't need these keys");
   } else if (c.type === "f") {
     const r = addFriendFromCode(c.data); done(true);
     toast(r.updated ? `${r.f.name} updated` : `${r.f.name} added to Friends`); go("friend", r.f.id);

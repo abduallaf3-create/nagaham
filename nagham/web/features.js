@@ -449,7 +449,7 @@ SETTINGS_TABS.playback = function () {
   const g = eqGains(), preset = settings.eq?.gains ? "custom" : (settings.eq?.preset || "flat");
   const cf = +settings.crossfade || 0;
   return `<div class="settings-sec"><h3>Sound</h3>
-      <div class="set-row"><div class="lbl"><b>Equalizer</b><span>Works on your own songs and on songs from YouTube Music. Spotify's own player can't be changed, so while the equalizer is on, Spotify songs play through YouTube Music.</span></div></div>
+      <div class="set-row"><div class="lbl"><b>Equalizer</b><span>Works on your own songs and on songs from YouTube Music.</span></div></div>
         <div class="seg eq-presets" data-eqpreset>${Object.entries(EQ_PRESETS).map(([k, [l]]) => `<button data-v="${k}" class="${preset === k ? "on" : ""}">${l}</button>`).join("")}${preset === "custom" ? '<button class="on">Custom</button>' : ""}</div>
       <div class="eqbox">${EQ_FREQS.map((f, i) => `<label><span class="eq-val">${g[i] > 0 ? "+" : ""}${g[i]}</span><input type="range" min="-12" max="12" step="1" value="${g[i]}" data-eqband="${i}" style="--p:${(g[i] + 12) / 24 * 100}%"><small>${f >= 1000 ? f / 1000 + "k" : f}</small></label>`).join("")}</div>
       <div class="set-row"><div class="lbl"><b>Crossfade</b><span>The next song fades in while this one fades out (your own songs and free full songs)</span></div>

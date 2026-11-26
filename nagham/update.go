@@ -15,13 +15,14 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 )
 
-const appVersion = "3.18.0"
+const appVersion = "4.0.0"
 
 // the GitHub repository ("owner/name") that new versions are published to;
 // can also be set in Settings → About
@@ -132,17 +133,35 @@ func latestRelease(repo string) (*ghRelease, error) {
 }
 
 func setupAsset(r *ghRelease) (string, int64) {
-	best, size := "", int64(0)
+	best, size, _ := setupAssetNamed(r)
+	return best, size
+}
+
+func setupAssetNamed(r *ghRelease) (string, int64, string) {
+	best, size, name := "", int64(0), ""
 	for _, a := range r.Assets {
 		n := strings.ToLower(a.Name)
 		if !strings.HasSuffix(n, ".exe") {
 			continue
 		}
 		if strings.Contains(n, "setup") || best == "" {
-			best, size = a.URL, a.Size
+			best, size, name = a.URL, a.Size, a.Name
 		}
 	}
-	return best, size
+	return best, size, name
+}
+
+var relVerRe = regexp.MustCompile(`(\d+\.\d+\.\d+)`)
+
+// the version a release really brings: the one in its installer's name (NaghamSetup-3.23.0.exe) when it
+// has one — a release tagged differently by mistake must not ask to update again and again
+func releaseVersion(r *ghRelease) string {
+	if _, _, n := setupAssetNamed(r); n != "" {
+		if m := relVerRe.FindString(n); m != "" {
+			return m
+		}
+	}
+	return strings.TrimPrefix(r.Tag, "v")
 }
 
 // GET /api/update/check
@@ -161,13 +180,16 @@ func updateCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	asset, size := setupAsset(rel)
-	out["latest"] = strings.TrimPrefix(rel.Tag, "v")
+	out["latest"] = releaseVersion(rel)
 	out["name"] = rel.Name
 	out["notes"] = rel.Body
 	out["page"] = rel.Page
 	out["asset"] = asset != ""
 	out["size"] = size
-	out["newer"] = newerVersion(rel.Tag, appVersion) && asset != ""
+	out["newer"] = newerVersion(releaseVersion(rel), appVersion) && asset != "" && runtime.GOOS == "windows"
+	if runtime.GOOS == "darwin" && newerVersion(releaseVersion(rel), appVersion) {
+		out["note"] = "A newer Nagham is out — on the Mac, download the new Nagham for Mac and replace the app"
+	}
 	writeJSON(w, out)
 }
 
@@ -233,11 +255,11 @@ func updateInstall(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "this release has no NaghamSetup.exe attached", 400)
 		return
 	}
-	if !newerVersion(rel.Tag, appVersion) {
+	if !newerVersion(releaseVersion(rel), appVersion) {
 		http.Error(w, "you already have the newest version", 400)
 		return
 	}
-	ver := verString(rel.Tag)
+	ver := verString(releaseVersion(rel))
 	setUpd("stage", "download", "pct", 0, "version", ver)
 	go func() {
 		fail := func(msg string) {

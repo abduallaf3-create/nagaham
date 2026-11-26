@@ -30,9 +30,9 @@ import (
 )
 
 var (
-	dlYtdlpURL  = dlEnv("NAGHAM_DL_YTDLP", "https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe")
+	dlYtdlpURL  = dlEnv("NAGHAM_DL_YTDLP", "https://github.com/yt-dlp/yt-dlp/releases/latest/download/"+map[bool]string{true: "yt-dlp_macos", false: "yt-dlp.exe"}[runtime.GOOS == "darwin"])
 	dlFfmpegURL = dlEnv("NAGHAM_DL_FFMPEG", "https://github.com/yt-dlp/FFmpeg-Builds/releases/latest/download/ffmpeg-master-latest-win64-gpl.zip")
-	dlDenoURL   = dlEnv("NAGHAM_DL_DENO", "https://github.com/denoland/deno/releases/latest/download/deno-x86_64-pc-windows-msvc.zip")
+	dlDenoURL   = dlEnv("NAGHAM_DL_DENO", "https://github.com/denoland/deno/releases/latest/download/"+dlDenoZip())
 )
 
 func dlEnv(k, d string) string {
@@ -92,6 +92,11 @@ func dlToolsDir() string         { return filepath.Join(dataDir, "tools") }
 func dlToolPath(n string) string { return filepath.Join(dlToolsDir(), dlExe(n)) }
 
 func dlResolve(n string) (string, bool) {
+	if n == "yt-dlp" && dlUseDir() {
+		if p := dlDirExe(); p != "" {
+			return p, true
+		}
+	}
 	if st, err := os.Stat(dlToolPath(n)); err == nil && st.Size() > 0 {
 		return dlToolPath(n), true
 	}
@@ -194,15 +199,31 @@ func dlEnsureTools(j *dlJob) error {
 		return f(func(p float64) { dlSet(j, func(j *dlJob) { j.Pct = p }) })
 	}
 	if _, ok := dlResolve("yt-dlp"); !ok {
-		if err := step("Getting the downloader (one time)…", func(cb func(float64)) error {
-			return dlFetch(dlYtdlpURL, dlToolPath("yt-dlp"), cb)
-		}); err != nil {
-			return fmt.Errorf("couldn't get yt-dlp: %w", err)
+		err := errors.New("")
+		if dlUseDir() { // the fast, unpacked one
+			err = step("Getting the downloader (one time)…", func(cb func(float64)) error {
+				return dlInstallYtdlpDir(context.Background(), cb)
+			})
+			if err != nil {
+				log.Printf("unpacked yt-dlp: %v", err)
+			}
 		}
-		os.Chmod(dlToolPath("yt-dlp"), 0o755)
+		if err != nil {
+			if err := step("Getting the downloader (one time)…", func(cb func(float64)) error {
+				return dlFetch(dlYtdlpURL, dlToolPath("yt-dlp"), cb)
+			}); err != nil {
+				return fmt.Errorf("couldn't get yt-dlp: %w", err)
+			}
+			os.Chmod(dlToolPath("yt-dlp"), 0o755)
+		}
+	} else {
+		dlDirBackground()
 	}
 	if _, ok := dlResolve("ffmpeg"); !ok {
 		if err := step("Getting the audio converter (one time, ~100 MB)…", func(cb func(float64)) error {
+			if runtime.GOOS == "darwin" {
+				return dlMacFfmpeg(cb)
+			}
 			z := filepath.Join(dlToolsDir(), "ffmpeg.zip")
 			if err := dlFetch(dlFfmpegURL, z, cb); err != nil {
 				return err
@@ -213,7 +234,7 @@ func dlEnsureTools(j *dlJob) error {
 			return fmt.Errorf("couldn't get ffmpeg: %w", err)
 		}
 	}
-	if runtime.GOOS == "windows" {
+	if runtime.GOOS == "windows" || runtime.GOOS == "darwin" {
 		if _, ok := dlResolve("deno"); !ok { // lets yt-dlp solve YouTube's checks; not fatal if it fails
 			_ = step("Getting a helper for YouTube (one time)…", func(cb func(float64)) error {
 				z := filepath.Join(dlToolsDir(), "deno.zip")
@@ -221,7 +242,11 @@ func dlEnsureTools(j *dlJob) error {
 					return err
 				}
 				defer os.Remove(z)
-				return dlUnzip(z, map[string]string{dlExe("deno"): dlToolPath("deno")})
+				if err := dlUnzip(z, map[string]string{dlExe("deno"): dlToolPath("deno")}); err != nil {
+					return err
+				}
+				os.Chmod(dlToolPath("deno"), 0o755)
+				return nil
 			})
 		}
 	}
@@ -437,6 +462,17 @@ func dlUpdateYtdlp(ytdlp string, now bool) {
 		return
 	}
 	dlUpdLast = time.Now()
+	if dlUseDir() && dlDirExe() != "" {
+		// the unpacked yt-dlp can't update itself: Nagham gets the newest one
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		if err := dlInstallYtdlpDir(ctx, func(float64) {}); err != nil {
+			log.Printf("yt-dlp update: %v", err)
+		} else {
+			os.WriteFile(stamp, []byte(time.Now().Format(time.RFC3339)), 0o644)
+		}
+		return
+	}
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)
 	defer cancel()
 	cmd := hidden(exec.CommandContext(ctx, ytdlp, "-U", "--no-warnings"))
@@ -504,6 +540,8 @@ func dlRun(j *dlJob, ctx context.Context, format string) {
 		return
 	}
 	defer func() { <-dlSlots }()
+	tStart := time.Now()
+	var tFound time.Duration
 	dlSet(j, func(j *dlJob) { j.Status, j.Phase, j.Pct = "downloading", "Downloading…", 0 })
 	ytdlp, _ := dlResolve("yt-dlp")
 	ffmpeg, _ := dlResolve("ffmpeg")
@@ -597,6 +635,7 @@ func dlRun(j *dlJob, ctx context.Context, format string) {
 			}
 		}
 	}
+	tFound = time.Since(tStart)
 	tries := append([]string{j.URL}, alts...)
 	if len(tries) < 2 {
 		tries = append(tries, j.URL) // the same video once more (YouTube often fails just once)
@@ -607,6 +646,7 @@ func dlRun(j *dlJob, ctx context.Context, format string) {
 			if dlLooksBroken(lastErr) { // YouTube changed something: a newer yt-dlp usually fixes it
 				dlSet(j, func(j *dlJob) { j.Phase = "Updating the downloader…" })
 				dlUpdateYtdlp(ytdlp, true)
+				ytdlp, _ = dlResolve("yt-dlp")
 			}
 			dlSet(j, func(j *dlJob) {
 				j.Status, j.Phase, j.Pct, j.URL = "downloading", fmt.Sprintf("Trying again (%d)…", try+1), 0, u
@@ -644,6 +684,7 @@ func dlRun(j *dlJob, ctx context.Context, format string) {
 	dlSet(j, func(j *dlJob) {
 		j.Status, j.Phase, j.Pct, j.Track = "done", "Done", 100, trackID(filepath.Clean(snap.File))
 	})
+	log.Printf("downloaded %s in %v (finding %v)", filepath.Base(snap.File), time.Since(tStart).Round(100*time.Millisecond), tFound.Round(100*time.Millisecond))
 	go scanAll() // the folder is already one of Nagham's: the song shows up
 }
 
@@ -665,10 +706,7 @@ func dlInfo(w http.ResponseWriter, r *http.Request) {
 	}
 	_, y := dlResolve("yt-dlp")
 	_, f := dlResolve("ffmpeg")
-	spMu.Lock()
-	linked := sp.RefreshToken != ""
-	spMu.Unlock()
-	out := map[string]any{"ready": y && f, "spotify": linked}
+	out := map[string]any{"ready": y && f, "spotify": false}
 	if p := dlCopy(dlPrep); p.Status != "" {
 		out["prep"] = map[string]any{"phase": p.Phase, "pct": p.Pct, "status": p.Status, "error": p.Error}
 	}
@@ -681,11 +719,15 @@ var dlPrep = &dlJob{ID: "prep"}
 
 func dlPrepareStart() {
 	go func() {
+		dlDirCleanup()
 		time.Sleep(8 * time.Second)
 		for {
 			_, y := dlResolve("yt-dlp")
 			_, f := dlResolve("ffmpeg")
 			_, d := dlResolve("deno")
+			if y {
+				dlDirBackground()
+			}
 			if y && f && (d || runtime.GOOS != "windows") {
 				dlSet(dlPrep, func(j *dlJob) { j.Status = "" })
 				return
@@ -1057,6 +1099,19 @@ func dlMatch(want []string, text string) float64 {
 }
 
 func dlYtSearch(ctx context.Context, ytdlp, q string) []dlItem {
+	t0 := time.Now()
+	if res := dlInnertubeSearch(ctx, q); len(res) > 0 {
+		log.Printf("search %q: %d results in %v (fast)", q, len(res), time.Since(t0).Round(time.Millisecond))
+		return res
+	}
+	if ytdlp == "" {
+		p, err := dlEnsureYtdlp()
+		if err != nil {
+			return nil
+		}
+		ytdlp = p
+	}
+	defer func() { log.Printf("search %q with yt-dlp took %v", q, time.Since(t0).Round(time.Millisecond)) }()
 	cctx, cancel := context.WithTimeout(ctx, 40*time.Second)
 	defer cancel()
 	cmd := hidden(exec.CommandContext(cctx, ytdlp, "--flat-playlist", "--dump-json", "--no-warnings", "--ignore-config", "--encoding", "utf-8", "--playlist-end", "10", "ytsearch10:"+q))
@@ -1104,9 +1159,15 @@ func dlEnsureYtdlp() (string, error) {
 	dlToolMu.Lock()
 	defer dlToolMu.Unlock()
 	if p, ok := dlResolve("yt-dlp"); ok {
+		dlDirBackground()
 		return p, nil
 	}
 	os.MkdirAll(dlToolsDir(), 0o755)
+	if dlUseDir() {
+		if err := dlInstallYtdlpDir(context.Background(), func(float64) {}); err == nil && dlDirExe() != "" {
+			return dlDirExe(), nil
+		}
+	}
 	if err := dlFetch(dlYtdlpURL, dlToolPath("yt-dlp"), func(float64) {}); err != nil {
 		return "", err
 	}
@@ -1157,11 +1218,7 @@ func dlSearch(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	ytdlp, err := dlEnsureYtdlp()
-	if err != nil {
-		http.Error(w, "couldn't get the downloader (check your internet): "+err.Error(), 502)
-		return
-	}
+	ytdlp := "" // only needed when the fast search doesn't answer
 	want := dlWords(q)
 	// words of a song (4 or more) are searched as lyrics too
 	lyricsLike := len(want) >= 4
@@ -1281,32 +1338,7 @@ type dlSpMeta struct {
 }
 
 func dlSpotifyMeta(ctx context.Context, id string) (dlSpMeta, error) {
-	if b, code, err := spDo("GET", "/v1/tracks/"+id, nil); err == nil && code == 200 {
-		var t struct {
-			Name    string  `json:"name"`
-			DurMs   float64 `json:"duration_ms"`
-			Artists []struct {
-				Name string `json:"name"`
-			} `json:"artists"`
-			Album struct {
-				Images []struct {
-					URL string `json:"url"`
-				} `json:"images"`
-			} `json:"album"`
-		}
-		if json.Unmarshal(b, &t) == nil && t.Name != "" {
-			var names []string
-			for _, a := range t.Artists {
-				names = append(names, a.Name)
-			}
-			m := dlSpMeta{Title: t.Name, Artist: strings.Join(names, ", "), Duration: t.DurMs / 1000}
-			if len(t.Album.Images) > 0 {
-				m.Thumb = t.Album.Images[0].URL // the biggest
-			}
-			return m, nil
-		}
-	}
-	// not linked: the public song page names the song and the artist
+	// the public song page names the song and the artist (no Spotify account needed)
 	cctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 	req, _ := http.NewRequestWithContext(cctx, "GET", dlSpotifyWeb+"/track/"+id, nil)
@@ -1346,64 +1378,7 @@ func dlSearchSpotify(w http.ResponseWriter, r *http.Request, q string) bool {
 		writeJSON(w, map[string]any{"results": []dlItem{{ID: id, Title: m.Title, Channel: m.Artist, Duration: m.Duration, Thumb: m.Thumb, URL: "https://open.spotify.com/track/" + id}}})
 		return true
 	}
-	spMu.Lock()
-	linked := sp.RefreshToken != ""
-	spMu.Unlock()
-	if !linked {
-		return false
-	}
-	// Spotify only accepts a small "limit" on search (it has been lowered over time), so try smaller ones when it refuses
-	var b []byte
-	var code int
-	var err error
-	for _, lim := range []int{10, 5, 0} {
-		u := "/v1/search?type=track&q=" + url.QueryEscape(q)
-		if lim > 0 {
-			u += "&limit=" + strconv.Itoa(lim)
-		}
-		b, code, err = spDo("GET", u, nil)
-		if err != nil || code == 200 || code != 400 {
-			break
-		}
-	}
-	if err != nil || code != 200 {
-		return false
-	}
-	var sr struct {
-		Tracks struct {
-			Items []struct {
-				ID      string  `json:"id"`
-				Name    string  `json:"name"`
-				DurMs   float64 `json:"duration_ms"`
-				Artists []struct {
-					Name string `json:"name"`
-				} `json:"artists"`
-				Album struct {
-					Images []struct {
-						URL string `json:"url"`
-					} `json:"images"`
-				} `json:"album"`
-			} `json:"items"`
-		} `json:"tracks"`
-	}
-	json.Unmarshal(b, &sr)
-	res := []dlItem{}
-	for _, t := range sr.Tracks.Items {
-		var names []string
-		for _, a := range t.Artists {
-			names = append(names, a.Name)
-		}
-		it := dlItem{ID: t.ID, Title: t.Name, Channel: strings.Join(names, ", "), Duration: t.DurMs / 1000, URL: "https://open.spotify.com/track/" + t.ID}
-		if n := len(t.Album.Images); n > 0 {
-			it.Thumb = t.Album.Images[n-1].URL
-		}
-		res = append(res, it)
-	}
-	if len(res) == 0 {
-		return false
-	}
-	writeJSON(w, map[string]any{"results": res})
-	return true
+	return false // searching Spotify needed a linked account: YouTube Music finds the same songs
 }
 
 // finds the best YouTube match for a Spotify song (same length ±; the artist and the title in the name)

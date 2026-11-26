@@ -7,7 +7,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"html"
 	"io"
 	"net/http"
@@ -16,7 +15,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
-	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -128,38 +126,22 @@ func colResolve(ctx context.Context, raw, cc string) (*colInfo, error) {
 		if pu.Query().Get("list") == "" && !strings.Contains(pu.Path, "/browse/") && !strings.Contains(pu.Path, "/playlist") && !strings.HasPrefix(pu.Path, "/@") && !strings.HasPrefix(pu.Path, "/channel/") {
 			return nil, errors.New("that's a link to one song — paste it in the song search instead")
 		}
-		ytMu.Lock()
-		ytLinked := yt.RefreshToken != ""
-		ytMu.Unlock()
 		list := pu.Query().Get("list")
 		if strings.HasPrefix(pu.Path, "/browse/VL") {
 			list = strings.TrimPrefix(pu.Path, "/browse/VL")
 		}
-		if ytLinked && list != "" { // your YouTube account: private playlists too
-			if info, err := colYouTubeAPI(list, u); err == nil && len(info.Tracks) > 0 {
-				return info, nil
-			}
-		}
 		info, err := colYouTube(ctx, u)
-		if err != nil && !ytLinked && list != "" && (list == "LM" || list == "LL" || strings.Contains(strings.ToLower(err.Error()), "private") || strings.Contains(strings.ToLower(err.Error()), "does not exist") || strings.Contains(strings.ToLower(err.Error()), "sign in")) {
-			return nil, errors.New("this playlist is private — link your YouTube account (Settings → Linked accounts → YouTube) so Nagham can read it, or make it public / unlisted in YouTube Music")
+		if err != nil && list != "" && (list == "LM" || list == "LL" || strings.Contains(strings.ToLower(err.Error()), "private") || strings.Contains(strings.ToLower(err.Error()), "does not exist") || strings.Contains(strings.ToLower(err.Error()), "sign in")) {
+			return nil, errors.New("this playlist is private — make it public or unlisted in YouTube Music, then paste the link again")
 		}
 		return info, err
 	}
 	return nil, errors.New("paste a link to a Spotify, YouTube Music, YouTube, Deezer or Apple Music album or playlist")
 }
 
-// ---------- Spotify: your linked account first (all songs), otherwise the public embed page (up to 100 songs)
+// ---------- Spotify: the public embed page (no account)
 func colSpotify(ctx context.Context, kind, id string) (*colInfo, error) {
-	spMu.Lock()
-	linked := sp.RefreshToken != ""
-	spMu.Unlock()
-	if linked {
-		if info, err := colSpotifyAPI(kind, id); err == nil && len(info.Tracks) > 0 {
-			return info, nil
-		}
-	}
-	return colSpotifyEmbed(ctx, kind, id, linked)
+	return colSpotifyEmbed(ctx, kind, id, false)
 }
 
 type spAPITrack struct {
@@ -176,121 +158,6 @@ type spAPITrack struct {
 			URL string `json:"url"`
 		} `json:"images"`
 	} `json:"album"`
-}
-
-func (t spAPITrack) col(album, cover string) colTrack {
-	var names []string
-	for _, a := range t.Artists {
-		names = append(names, a.Name)
-	}
-	c := colTrack{Title: t.Name, Artist: strings.Join(names, ", "), Duration: t.DurMs / 1000, Album: album, Cover: cover, N: t.Number}
-	if c.Album == "" {
-		c.Album = t.Album.Name
-	}
-	if c.Cover == "" && len(t.Album.Images) > 0 {
-		c.Cover = t.Album.Images[0].URL // the biggest
-	}
-	return c
-}
-
-func colSpotifyAPI(kind, id string) (*colInfo, error) {
-	get := func(path string, v any) error {
-		b, code, err := spDo("GET", path, nil)
-		if err != nil {
-			return err
-		}
-		if code != 200 {
-			return fmt.Errorf("spotify %d", code)
-		}
-		return json.Unmarshal(b, v)
-	}
-	type img struct {
-		URL string `json:"url"`
-	}
-	info := &colInfo{Kind: kind, Source: "spotify", Link: "https://open.spotify.com/" + kind + "/" + id}
-	next := ""
-	if kind == "album" {
-		var a struct {
-			Name    string `json:"name"`
-			Images  []img  `json:"images"`
-			Artists []struct {
-				Name string `json:"name"`
-			} `json:"artists"`
-			Tracks struct {
-				Items []spAPITrack `json:"items"`
-				Next  string       `json:"next"`
-			} `json:"tracks"`
-		}
-		if err := get("/v1/albums/"+id, &a); err != nil {
-			return nil, err
-		}
-		info.Title = a.Name
-		if len(a.Artists) > 0 {
-			info.Artist = a.Artists[0].Name
-		}
-		if len(a.Images) > 0 {
-			info.Cover = a.Images[0].URL
-		}
-		for _, t := range a.Tracks.Items {
-			info.Tracks = append(info.Tracks, t.col(a.Name, info.Cover))
-		}
-		next = a.Tracks.Next
-	} else {
-		var p struct {
-			Name   string `json:"name"`
-			Images []img  `json:"images"`
-			Owner  struct {
-				Name string `json:"display_name"`
-			} `json:"owner"`
-		}
-		if err := get("/v1/playlists/"+id+"?fields=name,images,owner(display_name)", &p); err != nil {
-			return nil, err
-		}
-		info.Title, info.Artist = p.Name, p.Owner.Name
-		if len(p.Images) > 0 {
-			info.Cover = p.Images[0].URL
-		}
-		next = "/v1/playlists/" + id + "/tracks?limit=100"
-	}
-	for guard := 0; next != "" && guard < 30 && len(info.Tracks) < 2000; guard++ {
-		path := next
-		if i := strings.Index(path, "/v1/"); i >= 0 {
-			path = path[i:]
-		}
-		var page struct {
-			Items []json.RawMessage `json:"items"`
-			Next  string            `json:"next"`
-		}
-		if err := get(path, &page); err != nil {
-			break
-		}
-		for _, raw := range page.Items {
-			var t spAPITrack
-			var wrap struct {
-				Track *spAPITrack `json:"track"`
-				Item  *spAPITrack `json:"item"`
-			}
-			if json.Unmarshal(raw, &wrap) == nil && (wrap.Track != nil || wrap.Item != nil) {
-				if wrap.Track != nil {
-					t = *wrap.Track
-				} else {
-					t = *wrap.Item
-				}
-			} else if json.Unmarshal(raw, &t) != nil {
-				continue
-			}
-			if t.Name == "" || t.Type == "episode" {
-				continue
-			}
-			if kind == "album" {
-				info.Tracks = append(info.Tracks, t.col(info.Title, info.Cover))
-			} else {
-				info.Tracks = append(info.Tracks, t.col("", ""))
-			}
-		}
-		next = page.Next
-	}
-	return info, nil
 }
 
 // the public embed page (the "Spotify player" websites show) lists the songs without any account
@@ -555,92 +422,13 @@ func colYouTube(ctx context.Context, link string) (*colInfo, error) {
 	return info, nil
 }
 
-// your linked YouTube account (official YouTube Data API): reads private playlists too
-func colYouTubeAPI(list, link string) (*colInfo, error) {
-	if list == "LM" { // YouTube Music's "Liked music" is the account's liked videos
-		list = "LL"
-	}
-	get := func(path string, v any) error {
-		b, code, err := ytDo("GET", path)
-		if err != nil {
-			return err
-		}
-		if code != 200 {
-			return fmt.Errorf("youtube %d", code)
-		}
-		return json.Unmarshal(b, v)
-	}
-	type thumbs struct {
-		High   struct{ URL string } `json:"high"`
-		Medium struct{ URL string } `json:"medium"`
-	}
-	info := &colInfo{Kind: "playlist", Source: "youtube", Link: link}
-	var pl struct {
-		Items []struct {
-			Snippet struct {
-				Title   string `json:"title"`
-				Channel string `json:"channelTitle"`
-				Thumbs  thumbs `json:"thumbnails"`
-			} `json:"snippet"`
-		} `json:"items"`
-	}
-	if err := get("/youtube/v3/playlists?part=snippet&id="+url.QueryEscape(list), &pl); err == nil && len(pl.Items) > 0 {
-		info.Title, info.Artist = pl.Items[0].Snippet.Title, pl.Items[0].Snippet.Channel
-		info.Cover = firstNonEmpty(pl.Items[0].Snippet.Thumbs.High.URL, pl.Items[0].Snippet.Thumbs.Medium.URL)
-	}
-	if list == "LL" && info.Title == "" {
-		info.Title = "Liked music"
-	}
-	clean := func(s string) string { return strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(s), " - Topic")) }
-	page := ""
-	for guard := 0; guard < 40 && len(info.Tracks) < 2000; guard++ {
-		var r struct {
-			Next  string `json:"nextPageToken"`
-			Items []struct {
-				Snippet struct {
-					Title  string `json:"title"`
-					Owner  string `json:"videoOwnerChannelTitle"`
-					Thumbs thumbs `json:"thumbnails"`
-					Res    struct {
-						VideoID string `json:"videoId"`
-					} `json:"resourceId"`
-				} `json:"snippet"`
-			} `json:"items"`
-		}
-		path := "/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=" + url.QueryEscape(list)
-		if page != "" {
-			path += "&pageToken=" + url.QueryEscape(page)
-		}
-		if err := get(path, &r); err != nil {
-			if len(info.Tracks) == 0 {
-				return nil, err
-			}
-			break
-		}
-		for _, it := range r.Items {
-			sn := it.Snippet
-			if sn.Res.VideoID == "" || sn.Title == "Private video" || sn.Title == "Deleted video" {
-				continue
-			}
-			info.Tracks = append(info.Tracks, colTrack{Title: sn.Title, Artist: clean(sn.Owner), URL: "https://music.youtube.com/watch?v=" + sn.Res.VideoID, Cover: firstNonEmpty(sn.Thumbs.High.URL, sn.Thumbs.Medium.URL)})
-		}
-		if page = r.Next; page == "" {
-			break
-		}
-	}
-	if info.Title == "" {
-		info.Title = "YouTube playlist"
-	}
-	return info, nil
-}
-
-// ---------- search: albums and playlists (Deezer's free catalogue; your linked Spotify too)
+// ---------- search: albums and playlists (Deezer's free catalogue)
 func colSearch(ctx context.Context, q string, withSpotify bool) []colHit {
 	qe := url.QueryEscape(q)
 	var mu sync.Mutex
 	var wg sync.WaitGroup
-	var albums, pls, sps []colHit
-	wg.Add(3)
+	var albums, pls []colHit
+	wg.Add(2)
 	go func() {
 		defer wg.Done()
 		var a struct {
@@ -683,96 +471,8 @@ func colSearch(ctx context.Context, q string, withSpotify bool) []colHit {
 			pls = append(pls, colHit{Kind: "playlist", Source: "deezer", Title: x.Title, Artist: x.User.Name, Cover: x.PictureXL, Count: x.Count, URL: "https://www.deezer.com/playlist/" + x.ID.String()})
 		}
 	}()
-	go func() {
-		defer wg.Done()
-		if !withSpotify {
-			return
-		}
-		spMu.Lock()
-		linked := sp.RefreshToken != ""
-		spMu.Unlock()
-		if !linked {
-			return
-		}
-		var b []byte
-		var code int
-		var err error
-		for _, lim := range []int{10, 5, 0} {
-			u := "/v1/search?type=album,playlist&q=" + qe
-			if lim > 0 {
-				u += "&limit=" + strconv.Itoa(lim)
-			}
-			b, code, err = spDo("GET", u, nil)
-			if err != nil || code != 400 {
-				break
-			}
-		}
-		if err != nil || code != 200 {
-			return
-		}
-		type img struct {
-			URL string `json:"url"`
-		}
-		var sr struct {
-			Albums struct {
-				Items []*struct {
-					ID      string `json:"id"`
-					Name    string `json:"name"`
-					Images  []img  `json:"images"`
-					Total   int    `json:"total_tracks"`
-					Release string `json:"release_date"`
-					Artists []struct {
-						Name string `json:"name"`
-					} `json:"artists"`
-				} `json:"items"`
-			} `json:"albums"`
-			Playlists struct {
-				Items []*struct {
-					ID     string `json:"id"`
-					Name   string `json:"name"`
-					Images []img  `json:"images"`
-					Owner  struct {
-						Name string `json:"display_name"`
-					} `json:"owner"`
-					Tracks struct {
-						Total int `json:"total"`
-					} `json:"tracks"`
-				} `json:"items"`
-			} `json:"playlists"`
-		}
-		json.Unmarshal(b, &sr)
-		mu.Lock()
-		defer mu.Unlock()
-		for _, x := range sr.Albums.Items {
-			if x == nil {
-				continue
-			}
-			h := colHit{Kind: "album", Source: "spotify", Title: x.Name, Count: x.Total, URL: "https://open.spotify.com/album/" + x.ID}
-			if len(x.Artists) > 0 {
-				h.Artist = x.Artists[0].Name
-			}
-			if len(x.Images) > 0 {
-				h.Cover = x.Images[0].URL
-			}
-			if len(x.Release) >= 4 {
-				h.Year = x.Release[:4]
-			}
-			sps = append(sps, h)
-		}
-		for _, x := range sr.Playlists.Items {
-			if x == nil {
-				continue
-			}
-			h := colHit{Kind: "playlist", Source: "spotify", Title: x.Name, Artist: x.Owner.Name, Count: x.Tracks.Total, URL: "https://open.spotify.com/playlist/" + x.ID}
-			if len(x.Images) > 0 {
-				h.Cover = x.Images[0].URL
-			}
-			sps = append(sps, h)
-		}
-	}()
 	wg.Wait()
 	out := []colHit{}
-	out = append(out, sps...)
 	out = append(out, albums...)
 	out = append(out, pls...)
 	return out

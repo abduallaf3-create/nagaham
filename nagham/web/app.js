@@ -197,7 +197,7 @@ function ctxTracks(type, id) {
   if (type === "oartist") return registerOnline(oCache["artist:" + id]?.data?.tracks || []);
   if (type === "oartistall") return registerOnline(oCache["artistsongs:" + id]?.data?.tracks || []);
   if (type === "recent") return (settings.history || []).filter(x => T(x));
-  return ytCtxTracks(type, id) || spCtxTracks(type, id) || [];
+  return [];
 }
 const SORTKEY = { liked: "liked", album: "album", artist: "artist", songs: "songs" };
 function ctxName(type, id) {
@@ -216,8 +216,6 @@ function playCtxKey(key, shuffled) {
   if (type === "oalbum" && !oCache["album:" + id]?.data) { playOnlineAlbum(id); return; }
   if (type === "oartist" && !oCache["artist:" + id]?.data) { go("oartist", id); return; }
   if (type === "oartistall" && !oCache["artistsongs:" + id]?.data) { OART.id = id; OART.tab = "songs"; go("oartist", id); return; }
-  if (/^sp(playlist|album|artist|liked)$/.test(type) && !spCtxTracks(type, id)?.length) { spPlayCtx(type, id, shuffled); return; }
-  if (/^yt(playlist|liked)$/.test(type) && !ytCtxTracks(type, id)?.length) { ytPlayCtx(type, id, shuffled); return; }
   const ids = sortedFor(type === "playlist" ? "pl:" + id : SORTKEY[type], ctxTracks(type, id));
   if (!ids.length) return toast("Nothing to play here yet");
   playContext(ids, shuffled ? Math.floor(Math.random() * ids.length) : 0, { type, id, name: ctxName(type, id) });
@@ -262,7 +260,9 @@ const VIEWS = {
       <div class="quick">${quick.map(q => `<div class="qt" data-go="${esc(goKey(q))}"><div class="art">${ctxArt(q.type, q.id, q.cover)}</div><span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:58px">${esc(ctxName(q.type, q.id) || q.name)}</span><button class="play-big" data-playctx="${esc(q.type + ":" + q.id)}">${IC.play}</button></div>`).join("")}</div>`;
     const recent = ctxTracks("recent").slice(0, 20);
     if (recent.length) { setList("recent", recent, { type: "recent", id: "", name: "Recently played" }); out += `<h2 class="sec">Recently played</h2><div class="row-scroll">${recent.map((id, i) => songTile(id, "recent", i)).join("")}</div>`; }
+    if (typeof recsHomeHTML === "function") out += recsHomeHTML();
     out += freshHTML();
+    if (typeof fyHomeHTML === "function") out += fyHomeHTML();
     const linked = linkedPlaylistTiles();
     if (linked) out += `<h2 class="sec">Your playlists <a data-go="library:playlists">Show all</a></h2><div class="row-scroll">${linked}</div>`;
     // world music (loads in the background)
@@ -337,8 +337,7 @@ const VIEWS = {
     const lsongs = lib.tracks.filter(t => match(`${t.title} ${t.artist} ${t.album}`)).map(t => t.id);
     const lalbums = lib.albums.filter(a => match(`${a.name} ${a.artist}`)).slice(0, 12);
     const lartists = lib.artists.filter(a => match(a.name)).slice(0, 12);
-    const sp = SP.connected ? spLoad("search:" + ql, () => SPF.search(q)) : null;
-    const ys = YTM.connected ? ytLoad("search:" + ql, () => YTF.search(q)) : null;
+    const sp = null, ys = null; // (linked Spotify / YouTube search was removed)
     const on = oLoad("search:" + ql, "/api/online/search?country=" + settings.country + "&q=" + encodeURIComponent(q), 10 * 60e3);
     const f = searchFilter;
     const chips = [["all", "All"], ["songs", "Songs"], ["artists", "Artists"], ["albums", "Albums"], ["pc", (IOS ? "My songs" : "On this PC")]];
@@ -380,8 +379,8 @@ const VIEWS = {
   },
   settings(tab) {
     const tabs = IOS
-      ? [["profile", "Profile", IC.person], ["appearance", "Appearance & Themes", IC.palette], ["library", "My music", IC.folder], ["accounts", "Accounts", IC.share], ["playback", "Playback", IC.play], ["about", "About", IC.info]]
-      : [["profile", "Profile", IC.person], ["appearance", "Appearance & Themes", IC.palette], ["library", "Music on this PC", IC.folder], ["accounts", "Linked accounts", IC.share], ["playback", "Playback & window", IC.play], ["shortcuts", "Shortcuts", IC.dots], ["about", "About", IC.info]];
+      ? [["profile", "Profile", IC.person], ["appearance", "Appearance & Themes", IC.palette], ["library", "My music", IC.folder], ["playback", "Playback", IC.play], ["about", "About", IC.info]]
+      : [["profile", "Profile", IC.person], ["appearance", "Appearance & Themes", IC.palette], ["library", "Music on this PC", IC.folder], ["accounts", "Discord", IC.share], ["playback", "Playback & window", IC.play], ["shortcuts", "Shortcuts", IC.dots], ["about", "About", IC.info]];
     tab = tabs.some(t => t[0] === tab) ? tab : "profile";
     const body = SETTINGS_TABS[tab]();
     return `<div class="pad fade-in"><h1 class="greet">Settings</h1>
@@ -439,19 +438,7 @@ function renderLib() {
     h += `<div class="lib-sub">Artists you follow</div>`;
     for (const f of follows()) h += item("oartist:" + f.id, "oartist:" + f.id, `<div class="circle-art">${imgHTML(proxImg(f.picture), f.id, IC.person)}</div>`, f.name, "Artist", cur.view === "oartist" && cur.arg === f.id);
   }
-  if (!lib.playlists.length && !SP.connected) h += `<div style="background:var(--input);border-radius:14px;padding:16px 18px;margin:8px 0"><div style="font-weight:700">Create your first playlist</div><div class="muted" style="font-size:14px;margin:6px 0 14px">Mix songs from your PC and from around the world.</div><button class="btn sm accent" onclick="newPlaylist()">Create playlist</button></div>`;
-  if (YTM.connected) {
-    const c = ytLoad("myplaylists", YTF.myplaylists);
-    h += `<div class="lib-sub">YouTube Music</div>` + (isHidden("ytliked:") ? "" : item("ytliked:", "ytliked", `<div class="art-ph" style="background:linear-gradient(135deg,#ff4e45,#8a1c17)">${YT_LOGO}</div>`, "Liked music", "Playlist", cur.view === "ytliked"));
-    for (const p of c.data || []) { if (isHidden("ytplaylist:" + p.id)) continue; const th = p.snippet?.thumbnails || {}; h += item("ytplaylist:" + p.id, "ytplaylist:" + p.id, imgHTML(proxImg((th.medium || th.default || {}).url), p.id), p.snippet?.title || "Playlist", "Playlist", cur.view === "ytplaylist" && cur.arg === p.id); }
-  }
-  if (SP.connected) {
-    const c = spLoad("myplaylists", SPF.myplaylists);
-    if ((c.data || []).length || c.loading) h += `<div class="lib-sub">Spotify</div>`;
-    if (c.loading) h += `<div class="lib-item"><div class="art skeleton"></div><div class="meta"><div class="skeleton" style="height:12px;width:70%"></div></div></div>`;
-    else if (c.error) h += `<div class="muted" style="font-size:13px;padding:6px 10px">${esc(c.error)}</div>`;
-    else for (const p of c.data || []) if (!isHidden("spplaylist:" + p.id)) h += item("spplaylist:" + p.id, "spplaylist:" + p.id, imgHTML(proxImg(bestImg(p.images, true)), p.id), p.name, `Playlist • ${esc(p.owner?.display_name || "")}`, cur.view === "spplaylist" && cur.arg === p.id);
-  }
+  if (!lib.playlists.length) h += `<div style="background:var(--input);border-radius:14px;padding:16px 18px;margin:8px 0"><div style="font-weight:700">Create your first playlist</div><div class="muted" style="font-size:14px;margin:6px 0 14px">Mix songs from your PC and from around the world.</div><button class="btn sm accent" onclick="newPlaylist()">Create playlist</button></div>`;
   $("#libList").innerHTML = h;
 }
 const libList = $("#libList");
@@ -712,7 +699,7 @@ function reopenYtm() {
 /* is this Nagham's own window (YouTube Music can play hidden inside it)? */
 async function ytmDetect() {
   if (EXT.native !== null) return EXT.native;
-  if (!window.chrome?.webview && !IOS) return (EXT.native = false);
+  if (!window.chrome?.webview && !IOS && !window.NAGHAM_MAC) return (EXT.native = false);
   try { const r = await api("/api/ytm", {}); EXT.native = !!r?.native; } catch { EXT.native = false; }
   return EXT.native;
 }
@@ -741,7 +728,7 @@ async function playElsewhere(id, startAt = 0, gen) {
     // a fresh "n=" makes the same song load again (repeat one / play again)
     await ytmApi({ url: url + "&nagham=" + P.gen, hidden: true, visible: false, vol: Math.max(0, Math.min(1, effVol())) });
     ytmWatchLoad(P.gen, url);
-    showYtMini(!!settings.ytmShow); syncYtmRect(true);
+    showYtMini(false); syncYtmRect(true);
     renderPP(); renderNP(); renderTime(); markPlaying(); discordUpdate(true);
     return;
   }
@@ -821,8 +808,8 @@ function checkYtmStuck() {
   EXT.helpShown = true;
   const st = EXT.st || {};
   postLog(`ytm didn't start: url=${EXT.url} path=${st.path} ok=${st.ok} paused=${st.p} rs=${st.rs} vid=${st.vid}`);
-  showYtVideo(true, true);
-  toast("YouTube Music didn't start by itself — it's shown in the video box so you can see why");
+  toast("This song didn't start on YouTube Music — playing the next one");
+  next(true);
 }
 function ytmVolume() {
   if (!extOn()) return;
@@ -979,7 +966,7 @@ function renderPP() {
   for (const b of [$("#pp"), $("#fPP")]) { b.innerHTML = paused ? IC.play : IC.pause; b.title = paused ? "Play (Space)" : "Pause (Space)"; }
   document.body.classList.toggle("paused", paused);
   $("#full").classList.toggle("paused", paused);
-  for (const vb of [$("#vidBtn"), $("#fVid")]) { const can = extOn(); vb.hidden = !can; vb.classList.toggle("on", can && $("#ytmini").classList.contains("on")); vb.title = vb.classList.contains("on") ? "Hide the YouTube Music video (the song keeps playing)" : "Show the YouTube Music video"; }
+  for (const vb of [$("#vidBtn"), $("#fVid")]) { const can = false; /* the YouTube Music page is never shown */ vb.hidden = !can; vb.classList.toggle("on", can && $("#ytmini").classList.contains("on")); vb.title = vb.classList.contains("on") ? "Hide the YouTube Music video (the song keeps playing)" : "Show the YouTube Music video"; }
   updateTitle();
 }
 $("#vidBtn").onclick = $("#fVid").onclick = () => showYtVideo(!$("#ytmini").classList.contains("on"));
@@ -1252,13 +1239,13 @@ fetch("/api/ping").catch(() => {});
   applyTheme(currentTheme());
   try { await loadState(true); } catch (e) { $("#view").innerHTML = `<div class="pad empty"><h2>Couldn't load your library</h2><p>${esc(e.message)}</p></div>`; return; }
   settings.recent ||= []; settings.sort ||= {}; settings.customThemes ||= []; settings.history ||= [];
+  if (!settings.light3190) { settings.light3190 = true; if (!settings.perf || settings.perf === "auto") settings.perf = "on"; saveUser(); } // 3.19.0: light by default
   if (settings.perf === "on" || (settings.perf !== "off" && settings.liteAuto)) document.body.classList.add("lite");
   if (settings.perf === "off") document.body.classList.remove("lite");
   applyTheme(currentTheme());
   renderVol(); renderPP(); renderModes();
   go("home");
   renderMe();
-  Promise.all([spRefreshStatus(), ytRefreshStatus()]).then(() => { if (SP.connected || YTM.connected) { renderLib(); if (nav.stack[nav.idx]?.view === "home") render(true); } });
   fetch("/api/ui/ready", { method: "POST" }).catch(() => {});
   setTimeout(detectPerf, 2500);
   if (!settings.onboarded) { try { startOnboarding(); } catch (e) { postLog("onboarding: " + e.stack); settings.onboarded = true; $("#onboard").className = "ob"; } }
@@ -1273,9 +1260,4 @@ fetch("/api/ping").catch(() => {});
   pollScan();
 })();
 
-/* iPhone app: the sign-in sheet closed → see if Spotify / YouTube got linked */
-window.naghamAuthDone = async () => {
-  try { await spRefreshStatus(); } catch {}
-  try { await ytRefreshStatus(); } catch {}
-  renderLib(); render(true);
-};
+window.naghamAuthDone = () => {};

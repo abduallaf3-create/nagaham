@@ -1,0 +1,73 @@
+name: Mac app
+
+on:
+  push:
+    branches: [main]
+    paths: ["mac/**", "nagham/**", ".github/workflows/mac.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: mac-build
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24.x"
+          cache: false
+
+      - name: Build Nagham.app
+        shell: bash
+        run: BUILD="${{ github.run_number }}" mac/build.sh 2>&1 | tee mac/build.log
+
+      - name: Try it on this Mac (open the app, check the server, the downloader and a screenshot)
+        if: always()
+        continue-on-error: true
+        shell: bash
+        run: |
+          set -x
+          mkdir -p mac/check
+          D="$HOME/Library/Application Support/Nagham"
+          open mac/build/Nagham.app
+          for i in $(seq 1 60); do [ -s "$D/port" ] && break; sleep 1; done
+          PORT="$(cat "$D/port")"; B="http://127.0.0.1:$PORT"
+          echo "port $PORT"
+          sleep 12
+          screencapture -x mac/check/1-start.png || true
+          curl -s "$B/api/ytm" -X POST -d '{}' | tee mac/check/native.json; echo
+          curl -s -m 30 "$B/api/dl/search?q=adele%20hello" | head -c 600 | tee mac/check/search.json; echo
+          # one real download (the first time also gets yt-dlp, ffmpeg and deno for Mac)
+          JOB="$(curl -s -X POST "$B/api/dl/start" -H 'Content-Type: application/json' -d '{"url":"https://www.youtube.com/watch?v=YQHsXMglC9A","format":"m4a"}')"
+          echo "$JOB" | tee mac/check/job-start.json
+          ID="$(echo "$JOB" | python3 -c 'import sys,json; print(json.load(sys.stdin).get("id",""))' || true)"
+          for i in $(seq 1 120); do
+            S="$(curl -s "$B/api/dl/job?id=$ID")"; echo "$S" | head -c 300; echo
+            echo "$S" | grep -q '"status":"\(done\|error\)"' && break
+            sleep 3
+          done
+          echo "$S" > mac/check/job-end.json
+          ls -la "$D/tools" | tee mac/check/tools.txt || true
+          "$D/tools/ffmpeg" -version 2>&1 | head -1 | tee -a mac/check/tools.txt || true
+          "$D/tools/yt-dlp" --version 2>&1 | tee -a mac/check/tools.txt || true
+          screencapture -x mac/check/2-after.png || true
+          cp "$D/nagham.log" mac/check/ 2>/dev/null || true
+          osascript -e 'quit app "Nagham"' || true
+          sleep 3; pgrep -fl nagham-server | tee mac/check/after-quit.txt || echo "server stopped" | tee mac/check/after-quit.txt
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Nagham-mac
+          path: |
+            mac/build/Nagham-mac-*.zip
+            mac/build.log
+            mac/check/
+          if-no-files-found: warn
