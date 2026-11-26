@@ -589,7 +589,10 @@ func main() {
 				for {
 					time.Sleep(2 * time.Second)
 					if os.Getppid() == 1 {
-						os.Remove(portFile)
+						// only our own note: a new Nagham (after an update) may already have written its port
+						if b, _ := os.ReadFile(portFile); strings.TrimSpace(string(b)) == fmt.Sprint(port) {
+							os.Remove(portFile)
+						}
 						os.Exit(0)
 					}
 				}
