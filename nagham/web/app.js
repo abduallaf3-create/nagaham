@@ -599,7 +599,7 @@ async function startEngine(id, startAt = 0) {
   const gen = P.gen = (P.gen || 0) + 1;
   const stale = () => gen !== P.gen || P.current !== id;
   P.loaded = id; P.wantPlay = true;
-  clearTimeout(P.watch);
+  clearTimeout(P.watch); YP.cur = null;
   const local = !t.online;
   if (E.mode === "external") { E.mode = "audio"; showYtMini(false); stopYtm(); } // not awaited: the next song must not wait for the old page
   // sound effects (equalizer / singer volume) can't reach Spotify's own player: with one switched on, the song plays through YouTube Music
@@ -608,6 +608,25 @@ async function startEngine(id, startAt = 0) {
     if (EXT.native === null) await ytmDetect();
     if (stale()) return;
     if (EXT.native) spHere = false;
+  }
+  // Nagham's own player: yt-dlp finds the song's audio, Nagham keeps it in a cache while it plays —
+  // no YouTube Music page (no ads, much lighter). If a song can't play this way, YouTube Music below is the backup.
+  if (!local && !spHere && t.src !== "au" && ypOn()) {
+    const vid = await ypVideo(id);
+    if (stale()) return;
+    if (vid) {
+      if (E.mode === "youtube") { ytStop(); }
+      if (E.mode === "external") { try { stopYtm(); } catch {} }
+      E.mode = "audio"; showYtMini(false);
+      t.ypNow = vid; YP.cur = { id, vid, gen };
+      postLog(`own player #${gen} ${t.title} → ${vid}`);
+      audio.src = "/api/yt/audio/" + vid;
+      if (startAt) audio.currentTime = startAt;
+      audio.play().catch(err => { if (err.name !== "AbortError") console.warn(err); });
+      ypWatch(id, vid, gen);
+      ypPrepNext();
+      return;
+    }
   }
   if (!local && !spHere) {
     if (EXT.native === null) await ytmDetect();
@@ -660,6 +679,60 @@ function iosKeepAlive(on) {
   } catch (e) { console.warn(e); }
 }
 setInterval(() => { if (IOS) iosKeepAlive(!!(P.current && P.wantPlay && (E.mode === "external" || E.mode === "youtube"))); }, 1500);
+/* ---- Nagham's own player for YouTube songs (yt-dlp + a cache) ---- */
+const YP = { cur: null, fails: 0, offUntil: 0 };
+function ypOn() { return settings.ytdlpPlay !== false && Date.now() > YP.offUntil; }
+async function ypVideo(id) {
+  const t = T(id); if (!t) return null;
+  const bad = t.ypFailed || [];
+  if (isYt(id)) return bad.includes(id.slice(3)) ? null : id.slice(3);
+  if (!t.ypIds) {
+    try {
+      const r = await Promise.race([
+        api(`/api/yt/find?title=${encodeURIComponent(t.title)}&artist=${encodeURIComponent(t.artist || "")}&dur=${Math.round(t.fullDuration || t.duration || 0)}`),
+        new Promise((_, rej) => setTimeout(() => rej(new Error("timeout")), 30000)),
+      ]);
+      t.ypIds = r.ids || [];
+    } catch { t.ypIds = []; }
+  }
+  return [...t.ypIds, ...(t.ytAlt || [])].find(v => !bad.includes(v)) || null;
+}
+// a song didn't play this way: its next video, then the YouTube Music player
+function ypFail(id, vid, why) {
+  const t = T(id); if (!t || P.current !== id) return;
+  const at = Math.max(0, audio.currentTime || 0);
+  postLog(`own player failed ${t.title} (${vid}): ${why}`);
+  t.ypFailed = [...(t.ypFailed || []), vid];
+  YP.cur = null;
+  if (++YP.fails >= 3) { YP.offUntil = Date.now() + 10 * 60 * 1000; YP.fails = 0; postLog("own player: several songs failed in a row — YouTube Music for 10 minutes"); }
+  audio.pause(); audio.removeAttribute("src");
+  P.loaded = null;
+  startEngine(id, at > 2 ? at : 0);
+}
+function ypWatch(id, vid, gen) {
+  clearTimeout(P.watch);
+  P.watch = setTimeout(() => {
+    if (P.current !== id || P.gen !== gen || E.mode !== "audio" || !YP.cur || YP.cur.vid !== vid) return;
+    if (audio.paused && !P.wantPlay) return;
+    if (audio.readyState >= 3 && !audio.paused) return;
+    if (audio.readyState >= 1) { ypWatch(id, vid, gen); return; } // started arriving: give it more time
+    ypFail(id, vid, "took too long to start");
+  }, 30000);
+}
+// get the next song ready while this one plays, so skipping is instant
+function ypPrepNext() {
+  const ids = [];
+  if (P.upNext?.length) ids.push(P.upNext[0]);
+  else if (P.order?.length && P.opos + 1 < P.order.length) ids.push(P.ctx[P.order[P.opos + 1]]);
+  for (const nid of ids) {
+    const t = T(nid); if (!t || !t.online || t.src === "au") continue;
+    // a few seconds later, so the song that's starting gets the whole connection first
+    if (isYt(nid)) setTimeout(() => api("/api/yt/prep?id=" + nid.slice(3)).catch(() => {}), 6000);
+    else setTimeout(() => { if (T(nid) && !T(nid).ypIds) api(`/api/yt/find?prep=1&title=${encodeURIComponent(T(nid).title)}&artist=${encodeURIComponent(T(nid).artist || "")}&dur=${Math.round(T(nid).fullDuration || T(nid).duration || 0)}`).then(r => { T(nid).ypIds = r.ids || []; }).catch(() => {}); }, 6000);
+  }
+}
+audio.addEventListener("playing", () => { if (YP.cur && P.current === YP.cur.id) YP.fails = 0; });
+
 /* the refresh button: start the current song again from where it is, with a clean player */
 let reloading = false;
 async function reloadSong(auto) {
@@ -922,6 +995,7 @@ audio.addEventListener("play", onEnginePlay);
 audio.addEventListener("pause", onEnginePause);
 audio.addEventListener("error", () => {
   if (!P.current || !P.wantPlay || E.mode !== "audio" || !audio.getAttribute("src")) return;
+  if (YP.cur && YP.cur.id === P.current && audio.getAttribute("src").startsWith("/api/yt/audio/")) { ypFail(P.current, YP.cur.vid, "the player couldn't read it"); return; }
   const t = T(P.current);
   toast(t?.online ? `“${t.title}” isn't available right now — skipping` : `Can't play “${t?.title}” — skipping`);
   setTimeout(() => next(true), 900);

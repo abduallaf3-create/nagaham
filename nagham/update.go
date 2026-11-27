@@ -21,7 +21,7 @@ import (
 	"time"
 )
 
-const appVersion = "4.0.4"
+const appVersion = "4.1.0"
 
 // the GitHub repository ("owner/name") that new versions are published to;
 // can also be set in Settings → About
