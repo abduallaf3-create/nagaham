@@ -727,8 +727,8 @@ function ypPrepNext() {
   for (const nid of ids) {
     const t = T(nid); if (!t || !t.online || t.src === "au") continue;
     // a few seconds later, so the song that's starting gets the whole connection first
-    if (isYt(nid)) setTimeout(() => api("/api/yt/prep?id=" + nid.slice(3)).catch(() => {}), 6000);
-    else setTimeout(() => { if (T(nid) && !T(nid).ypIds) api(`/api/yt/find?prep=1&title=${encodeURIComponent(T(nid).title)}&artist=${encodeURIComponent(T(nid).artist || "")}&dur=${Math.round(T(nid).fullDuration || T(nid).duration || 0)}`).then(r => { T(nid).ypIds = r.ids || []; }).catch(() => {}); }, 6000);
+    if (isYt(nid)) setTimeout(() => api("/api/yt/prep?id=" + nid.slice(3)).catch(() => {}), 2000);
+    else setTimeout(() => { if (T(nid) && !T(nid).ypIds) api(`/api/yt/find?prep=1&title=${encodeURIComponent(T(nid).title)}&artist=${encodeURIComponent(T(nid).artist || "")}&dur=${Math.round(T(nid).fullDuration || T(nid).duration || 0)}`).then(r => { T(nid).ypIds = r.ids || []; }).catch(() => {}); }, 2000);
   }
 }
 audio.addEventListener("playing", () => { if (YP.cur && P.current === YP.cur.id) YP.fails = 0; });

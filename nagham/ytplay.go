@@ -161,7 +161,29 @@ func ypOpen(ctx context.Context, vid string) (*ypFile, error) {
 
 var ypMetaRe = regexp.MustCompile(`^\s*([0-9.]+|NA|None)?\|([a-z0-9]+)\|`)
 
+// ypDownload: first the quick way (a YouTube client that needs no JavaScript work: starts seconds sooner),
+// then yt-dlp's normal way if that gave nothing
 func ypDownload(f *ypFile) {
+	if (os.Getenv("NAGHAM_TEST_YTURL") == "" || os.Getenv("NAGHAM_TEST_QUICK") != "") && ypDownloadTry(f, true) {
+		return
+	}
+	ypDownloadTry(f, false)
+}
+
+var (
+	ypQuickBad   time.Time // the quick way stopped working: skip it for a while
+	ypQuickFails int
+)
+
+func ypDownloadTry(f *ypFile, quick bool) bool {
+	if quick {
+		ypMu.Lock()
+		bad := time.Since(ypQuickBad) < 30*time.Minute
+		ypMu.Unlock()
+		if bad {
+			return false
+		}
+	}
 	vid := f.vid
 	fail := func(msg string) {
 		f.mu.Lock()
@@ -181,7 +203,7 @@ func ypDownload(f *ypFile) {
 	ytdlp, err := dlEnsureYtdlp()
 	if err != nil {
 		fail(err.Error())
-		return
+		return true
 	}
 	dir := ypCacheDir()
 	meta := filepath.Join(dir, vid+".meta")
@@ -191,28 +213,37 @@ func ypDownload(f *ypFile) {
 	start := time.Now()
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
 	defer cancel()
-	cmd := hidden(exec.CommandContext(ctx, ytdlp, "--no-playlist", "--no-warnings", "--ignore-config", "--encoding", "utf-8",
+	args := []string{"--no-playlist", "--no-warnings", "--ignore-config", "--encoding", "utf-8",
 		"--socket-timeout", "15", "--retries", "5", "--fragment-retries", "5", "--no-part", "--no-mtime", "--no-simulate",
 		"-f", "bestaudio[ext=m4a]/bestaudio[acodec^=mp4a]/bestaudio[ext=webm]/bestaudio/best[ext=mp4]/best",
-		"--print-to-file", "%(filesize)s|%(ext)s|%(duration)s", meta,
-		"-o", "-", "--", ypWatchURL(vid)))
+		"--print-to-file", "%(filesize)s|%(ext)s|%(duration)s", meta}
+	url := ypWatchURL(vid)
+	if quick {
+		// visionos needs no YouTube player script, so no deno work: seconds sooner
+		args = append(args, "--extractor-args", "youtube:player_client=visionos",
+			// plain files only (Apple clients also offer HLS, which doesn't stream well here)
+			"-f", "bestaudio[ext=m4a][protocol^=http]/bestaudio[protocol^=http]/best[ext=mp4][protocol^=http]")
+		url = "https://www.youtube.com/watch?v=" + vid
+	}
+	args = append(args, "-o", "-", "--", url)
+	cmd := hidden(exec.CommandContext(ctx, ytdlp, args...))
 	cmd.Env = append(os.Environ(), "PATH="+dlToolsDir()+string(os.PathListSeparator)+os.Getenv("PATH"), "PYTHONIOENCODING=utf-8")
 	out, err := cmd.StdoutPipe()
 	if err != nil {
 		fail(err.Error())
-		return
+		return true
 	}
 	var stderr strings.Builder
 	cmd.Stderr = &ypLimitWriter{w: &stderr, n: 64 << 10}
 	if err := cmd.Start(); err != nil {
 		fail(err.Error())
-		return
+		return true
 	}
 	file, err := os.Create(tmp)
 	if err != nil {
 		cmd.Process.Kill()
 		fail(err.Error())
-		return
+		return true
 	}
 	// the size / type note arrives before the sound: watch for it
 	gotMeta := make(chan struct{})
@@ -276,6 +307,19 @@ func ypDownload(f *ypFile) {
 	close(ended)
 	<-gotMeta
 	if werr != nil || err != nil || pos < 10000 {
+		if quick && pos == 0 && werr == nil { // nothing came the quick way: the normal way
+			log.Printf("yt play: %s: quick way gave nothing (%s), trying the normal way", vid, strings.TrimSpace(dlLastError(strings.Split(strings.TrimSpace(stderr.String()), "\n"))))
+			ypMu.Lock()
+			if ypQuickFails++; ypQuickFails >= 3 { // one song can be special; three in a row is YouTube
+				ypQuickBad, ypQuickFails = time.Now(), 0
+			}
+			ypMu.Unlock()
+			f.mu.Lock()
+			f.path, f.size, f.ext = "", 0, ""
+			f.mu.Unlock()
+			os.Remove(tmp)
+			return false
+		}
 		msg := dlLastError(strings.Split(strings.TrimSpace(stderr.String()), "\n"))
 		if msg == "" && werr != nil {
 			msg = werr.Error()
@@ -288,7 +332,7 @@ func ypDownload(f *ypFile) {
 		}
 		fail(msg)
 		os.Remove(tmp)
-		return
+		return true
 	}
 	f.mu.Lock()
 	ext := f.ext
@@ -309,8 +353,16 @@ func ypDownload(f *ypFile) {
 	ypMu.Lock()
 	ypFails = 0
 	ypMu.Unlock()
-	log.Printf("yt play: %s ready (%d KB in %v)", vid, pos>>10, time.Since(start).Round(100*time.Millisecond))
+	how := "normal way"
+	if quick {
+		how = "quick way"
+		ypMu.Lock()
+		ypQuickFails = 0
+		ypMu.Unlock()
+	}
+	log.Printf("yt play: %s ready (%d KB in %v, %s)", vid, pos>>10, time.Since(start).Round(100*time.Millisecond), how)
 	go ypTrim()
+	return true
 }
 
 type ypLimitWriter struct {
