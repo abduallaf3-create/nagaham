@@ -1,0 +1,6 @@
+2026/11/27 18:22:28 listening on http://127.0.0.1:49169/
+2026/11/27 18:22:41 downloader ready
+2026/11/27 18:22:42 search "adele hello": 10 results in 484ms (fast)
+2026/11/27 18:22:44 download try 1 failed:  — [youtube] YQHsXMglC9A: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.c (https://www.youtube.com/watch?v=YQHsXMglC9A)
+2026/11/27 18:22:46 yt-dlp update: Latest version: stable@2026.11.23 from yt-dlp/yt-dlp | yt-dlp is up to date (stable@2026.11.23 from yt-dlp/yt-dlp) | <nil>
+2026/11/27 18:22:50 download try 2 failed:  — [youtube] YQHsXMglC9A: Sign in to confirm you’re not a bot. This helps protect our community. Use --cookies-from-browser or --cookies for the authentication. See  https://github.com/yt-dlp/yt-dlp/wiki/FAQ#how-do-i-pass-cookies-to-yt-dlp  for how to manually pass cookies. Also see  https://github.c (https://www.youtube.com/watch?v=YQHsXMglC9A)

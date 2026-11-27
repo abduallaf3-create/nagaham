@@ -1,0 +1,8 @@
+app folder before=12888348476 after=12888348617
+SWAPPED
+new Nagham running on port 49259
+Nagham.app
+8117 /Applications/Nagham.app/Contents/MacOS/Nagham
+8122 /Applications/Nagham.app/Contents/MacOS/nagham-server
+2026-11-27 18:23:43 installing 9.9.9 from /var/folders/20/jp1_0n3n7kndh6rnbqb5344m0000gn/T/NaghamUpdate/Nagham-mac-9.9.9.dmg
+2026-11-27 18:23:48 mac update: swapping /Applications/Nagham.app

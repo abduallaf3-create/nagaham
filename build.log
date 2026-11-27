@@ -1,0 +1,19 @@
+== Nagham server (Go) 4.1.3
+== Nagham window (Swift)
+== Icon
+== Sign (ad-hoc: needed for Apple chips) and pack
+Architectures in the fat file: /Users/runner/work/nagaham/nagaham/mac/build/Nagham.app/Contents/MacOS/Nagham are: x86_64 arm64 
+Architectures in the fat file: /Users/runner/work/nagaham/nagaham/mac/build/Nagham.app/Contents/MacOS/nagham-server are: x86_64 arm64 
+== Installer (.dmg): open it, drag Nagham into Applications
+created: /Users/runner/work/nagaham/nagaham/mac/build/Nagham-mac-4.1.3.dmg
+total 69208
+drwxr-xr-x  10 runner  staff       320 Nov 27 18:22 .
+drwxr-xr-x   7 runner  staff       224 Nov 27 18:21 ..
+-rwxr-xr-x   1 runner  staff    272904 Nov 27 18:22 app-arm64
+-rwxr-xr-x   1 runner  staff    260216 Nov 27 18:22 app-x86_64
+drwxr-xr-x  12 runner  staff       384 Nov 27 18:22 AppIcon.iconset
+-rw-r--r--@  1 runner  staff  10382234 Nov 27 18:22 Nagham-mac-4.1.3.dmg
+-rw-r--r--   1 runner  staff   8059061 Nov 27 18:22 Nagham-mac-4.1.3.zip
+drwxr-xr-x   3 runner  staff        96 Nov 27 18:21 Nagham.app
+-rwxr-xr-x   1 runner  staff   8440096 Nov 27 18:21 server-amd64
+-rwxr-xr-x   1 runner  staff   8010546 Nov 27 18:21 server-arm64

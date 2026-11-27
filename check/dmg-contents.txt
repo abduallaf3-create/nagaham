@@ -1,0 +1,5 @@
+total 8
+drwxr-xr-x  4 runner  staff  204 Nov 27 18:22 .
+drwxrwxrwt  6 root    wheel  192 Nov 27 18:23 ..
+lrwxr-xr-x  1 runner  staff   13 Nov 27 18:22 Applications -> /Applications
+drwxr-xr-x  3 runner  staff  102 Nov 27 18:21 Nagham.app

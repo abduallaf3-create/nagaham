@@ -1,0 +1,10 @@
+total 638160
+drwxr-xr-x  7 runner  staff       224 Nov 27 18:22 .
+drwxr-xr-x  9 runner  staff       288 Nov 27 18:22 ..
+-rwxr-xr-x  1 runner  staff  98799200 Nov 27 18:22 deno
+-rwxr-xr-x  1 runner  staff  95329264 Nov 27 18:22 ffmpeg
+-rwxr-xr-x  1 runner  staff  95121072 Nov 27 18:22 ffprobe
+-rwxr-xr-x  1 runner  staff  37478576 Nov 27 18:22 yt-dlp
+-rw-r--r--  1 runner  staff        20 Nov 27 18:22 yt-dlp.updated
+ffmpeg version 9.1-https://www.martin-riedl.de Copyright (c) 2000-2026 the FFmpeg developers
+2026.11.23
