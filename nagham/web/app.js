@@ -1267,3 +1267,5 @@ fetch("/api/ping").catch(() => {});
 
 window.naghamAuthDone = () => {};
 document.addEventListener("visibilitychange", () => { if (!document.hidden) try { renderTime(true); } catch {} });
+addEventListener("blur", () => document.body.classList.add("idle"));
+addEventListener("focus", () => document.body.classList.remove("idle"));

@@ -1095,3 +1095,6 @@ body.reduce-motion #karaoke .kar-bg i { animation: none; }
 .bk-row:first-child { border-top: 0; }
 /* iPhone: no download tools on the phone */
 body.ios [data-nav="dl"], body.ios [data-dlall], body.ios .col-mine { display: none !important; }
+
+/* while you're in another app, the endless little animations (glow, breathing cover, pulsing play button…) hold still */
+body.idle *, body.idle *::before, body.idle *::after { animation-play-state: paused !important; }

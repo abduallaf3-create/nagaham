@@ -206,7 +206,7 @@ function setPerfMode(mode) { settings.perf = mode; saveUser(); detectPerf(); }
 let fxKind = null, fxRAF = 0, fxAmt = 100;
 function setFx(kind, amt = 100) {
   if (kind === fxKind && amt === fxAmt) return;
-  fxKind = kind; fxAmt = amt; cancelAnimationFrame(fxRAF);
+  fxKind = kind; fxAmt = amt; cancelAnimationFrame(fxRAF); clearTimeout(fxRAF);
   if (amt <= 0) kind = "none";
   const host = $("#fx"); host.innerHTML = "";
   host.style.opacity = Math.min(1, .35 + amt / 150);
@@ -221,12 +221,17 @@ function setFx(kind, amt = 100) {
   } else if (kind === "petals") petals(host);
   else if (["snow", "rain", "fireflies", "bubbles"].includes(kind)) particles(host, kind, amt);
 }
+/* the next frame of a moving background: smooth while you're using Nagham; while you're in another
+   app (or Nagham is hidden) it waits instead, so the moving background costs (almost) nothing */
+const fxLive = () => !document.hidden && document.hasFocus();
+function fxNext(fn) { fxRAF = fxLive() ? requestAnimationFrame(fn) : setTimeout(fn, 500); }
 /* snow, rain, fireflies, bubbles – one light canvas engine */
 function particles(host, kind, amt) {
   const c = document.createElement("canvas"); host.appendChild(c);
   const x = c.getContext("2d");
   let W, H, dpr;
-  const size = () => { dpr = Math.min(devicePixelRatio || 1, 1.5); W = c.width = innerWidth * dpr; H = c.height = innerHeight * dpr; };
+  // drawn at screen size at most (the browser stretches it): a sharp-enough picture for a fraction of the work
+  const size = () => { dpr = Math.min(devicePixelRatio || 1, 1); W = c.width = innerWidth * dpr; H = c.height = innerHeight * dpr; c.style.width = "100%"; c.style.height = "100%"; };
   size(); addEventListener("resize", size);
   const css = getComputedStyle(document.documentElement);
   const accent = css.getPropertyValue("--accent").trim() || "#a970ff", text = css.getPropertyValue("--text").trim() || "#fff";
@@ -244,7 +249,7 @@ function particles(host, kind, amt) {
   const ps = Array.from({ length: n }, () => mk(false));
   const draw = () => {
     if (fxKind !== kind) return;
-    if (!document.hidden) {
+    if (fxLive()) {
       x.clearRect(0, 0, W, H);
       for (const p of ps) {
         p.t += .02; p.x += p.vx || 0; p.y += p.vy || 0;
@@ -261,7 +266,7 @@ function particles(host, kind, amt) {
         if (kind === "bubbles") { p.x += Math.sin(p.t) * .4 * dpr; x.globalAlpha = p.a; x.strokeStyle = accent; x.lineWidth = 1.5 * dpr; x.beginPath(); x.arc(p.x, p.y, p.r, 0, 6.28); x.stroke(); if (p.y < -30 * dpr) Object.assign(p, mk(true)); }
       }
     }
-    fxRAF = requestAnimationFrame(draw);
+    fxNext(draw);
   };
   draw();
 }
@@ -269,14 +274,14 @@ function petals(host) {
   const c = document.createElement("canvas"); host.appendChild(c);
   const x = c.getContext("2d");
   let W, H, dpr;
-  const size = () => { dpr = devicePixelRatio || 1; W = c.width = innerWidth * dpr; H = c.height = innerHeight * dpr; };
+  const size = () => { dpr = Math.min(devicePixelRatio || 1, 1); W = c.width = innerWidth * dpr; H = c.height = innerHeight * dpr; c.style.width = "100%"; c.style.height = "100%"; };
   size(); addEventListener("resize", size);
   const cols = ["#ffb7cf", "#ff9fc0", "#ffd0df", "#fbc4d8", "#ffe3ec"];
   const mk = (top) => ({ x: Math.random() * W, y: top ? -20 * dpr : Math.random() * H, s: (6 + Math.random() * 9) * dpr, vy: (.35 + Math.random() * .7) * dpr, vx: (.2 + Math.random() * .5) * dpr, a: Math.random() * 6.28, va: (Math.random() - .5) * .03, sw: Math.random() * 6.28, c: cols[Math.floor(Math.random() * cols.length)], o: .55 + Math.random() * .4 });
   const ps = Array.from({ length: Math.max(4, Math.round(34 * fxAmt / 100)) }, () => mk(false));
   const draw = () => {
     if (fxKind !== "petals") return;
-    if (!document.hidden) {
+    if (fxLive()) {
       x.clearRect(0, 0, W, H);
       for (const p of ps) {
         p.sw += .015; p.y += p.vy; p.x += p.vx + Math.sin(p.sw) * .6 * dpr; p.a += p.va;
@@ -289,7 +294,7 @@ function petals(host) {
         x.fill(); x.restore();
       }
     }
-    fxRAF = requestAnimationFrame(draw);
+    fxNext(draw);
   };
   draw();
 }
