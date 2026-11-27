@@ -7,7 +7,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -25,27 +24,12 @@ import (
 	"time"
 )
 
-type ypSrc struct {
-	URL     string
-	Headers map[string]string
-	Ext     string
-	Size    int64
-	Dur     float64
-	Exp     time.Time
-	Err     string
-	ErrAt   time.Time
-}
-
 var (
-	ypMu      sync.Mutex
-	ypCache   = map[string]*ypSrc{}
-	ypWait    = map[string]chan struct{}{}
-	ypFind    = map[string][]string{}
-	ypVidRe   = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
-	ypClient  = &http.Client{Timeout: 0}
-	ypChunk   = int64(2 << 20) // YouTube slows down long open requests, so the file is fetched in pieces
-	ypFails   int
-	ypFailsAt time.Time
+	ypMu       sync.Mutex
+	ypFind     = map[string][]string{}
+	ypVidRe    = regexp.MustCompile(`^[A-Za-z0-9_-]{11}$`)
+	ypFails    int
+	ypFailsAt  time.Time
 	ypCacheMax = int64(1500 << 20) // songs kept for instant replay (oldest go first)
 )
 
@@ -75,141 +59,20 @@ func ytIDFromURL(u string) string {
 	return ""
 }
 
-func ypResolve(ctx context.Context, vid string) (*ypSrc, error) {
-	ytdlp, err := dlEnsureYtdlp()
-	if err != nil {
-		return nil, err
-	}
-	cctx, cancel := context.WithTimeout(ctx, 45*time.Second)
-	defer cancel()
-	cmd := hidden(exec.CommandContext(cctx, ytdlp, "--dump-single-json", "--no-playlist", "--no-warnings", "--ignore-config", "--encoding", "utf-8",
-		"--socket-timeout", "15",
-		"-f", "bestaudio[ext=m4a][protocol^=http]/bestaudio[acodec^=mp4a][protocol^=http]/bestaudio[protocol^=http]/best[ext=mp4][protocol^=http]",
-		"--", ypWatchURL(vid)))
-	cmd.Env = append(os.Environ(), "PATH="+dlToolsDir()+string(os.PathListSeparator)+os.Getenv("PATH"), "PYTHONIOENCODING=utf-8")
-	out, err := cmd.Output()
-	if err != nil {
-		msg := ""
-		var ee *exec.ExitError
-		if errors.As(err, &ee) {
-			msg = dlLastError(strings.Split(strings.TrimSpace(string(ee.Stderr)), "\n"))
-		}
-		if msg == "" {
-			msg = err.Error()
-		}
-		return nil, errors.New(msg)
-	}
-	var j struct {
-		URL         string            `json:"url"`
-		Ext         string            `json:"ext"`
-		Duration    float64           `json:"duration"`
-		Filesize    int64             `json:"filesize"`
-		FilesizeA   float64           `json:"filesize_approx"`
-		HTTPHeaders map[string]string `json:"http_headers"`
-		Protocol    string            `json:"protocol"`
-	}
-	if err := json.Unmarshal(out, &j); err != nil || j.URL == "" {
-		return nil, errors.New("yt-dlp gave no audio address")
-	}
-	if strings.Contains(j.Protocol, "m3u8") || strings.Contains(j.Protocol, "dash") {
-		return nil, errors.New("this song only comes as a live stream")
-	}
-	s := &ypSrc{URL: j.URL, Headers: j.HTTPHeaders, Dur: j.Duration, Ext: j.Ext, Size: j.Filesize, Exp: time.Now().Add(4 * time.Hour)}
-	if s.Ext == "" || s.Ext == "mp4" {
-		s.Ext = "m4a"
-	}
-	if u, err := url.Parse(j.URL); err == nil {
-		if e, err := strconv.ParseInt(u.Query().Get("expire"), 10, 64); err == nil && e > 0 {
-			if t := time.Unix(e, 0).Add(-10 * time.Minute); t.Before(s.Exp) {
-				s.Exp = t
-			}
-		}
-	}
-	return s, nil
-}
-
-// ypGet returns the song's audio address, asking yt-dlp only once at a time per song
-func ypGet(ctx context.Context, vid string, fresh bool) (*ypSrc, error) {
-	for {
-		ypMu.Lock()
-		if s := ypCache[vid]; s != nil && !fresh {
-			if s.Err != "" && time.Since(s.ErrAt) < 90*time.Second {
-				ypMu.Unlock()
-				return nil, errors.New(s.Err)
-			}
-			if s.Err == "" && time.Now().Before(s.Exp) {
-				ypMu.Unlock()
-				return s, nil
-			}
-		}
-		if ch := ypWait[vid]; ch != nil {
-			ypMu.Unlock()
-			select {
-			case <-ch:
-				fresh = false
-				continue
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			}
-		}
-		ch := make(chan struct{})
-		ypWait[vid] = ch
-		ypMu.Unlock()
-
-		start := time.Now()
-		s, err := ypResolve(context.Background(), vid)
-		log.Printf("yt play: found %s in %v err=%v", vid, time.Since(start).Round(time.Millisecond), err)
-		ypMu.Lock()
-		delete(ypWait, vid)
-		close(ch)
-		if err != nil {
-			ypCache[vid] = &ypSrc{Err: err.Error(), ErrAt: time.Now()}
-			ypFails++
-			ypFailsAt = time.Now()
-		} else {
-			ypCache[vid] = s
-			ypFails = 0
-		}
-		if len(ypCache) > 300 {
-			for k, v := range ypCache {
-				if v.Err != "" || time.Now().After(v.Exp) {
-					delete(ypCache, k)
-				}
-			}
-		}
-		ypMu.Unlock()
-		return s, err
-	}
-}
-
-func ypUpstream(ctx context.Context, s *ypSrc, from, to int64) (*http.Response, error) {
-	req, _ := http.NewRequestWithContext(ctx, "GET", s.URL, nil)
-	for k, v := range s.Headers {
-		if strings.EqualFold(k, "Accept-Encoding") {
-			continue
-		}
-		req.Header.Set(k, v)
-	}
-	if req.Header.Get("User-Agent") == "" {
-		req.Header.Set("User-Agent", "Mozilla/5.0")
-	}
-	req.Header.Set("Range", fmt.Sprintf("bytes=%d-%d", from, to))
-	return ypClient.Do(req)
-}
-
 // ---------- the cache: a song's file fills up while it plays
 
 type ypFile struct {
-	vid  string
-	path string
-	ext  string
-	mu   sync.Mutex
-	cond *sync.Cond
-	size int64
-	have int64
-	done bool
-	err  string
-	busy bool
+	vid   string
+	path  string
+	ext   string
+	mu    sync.Mutex
+	cond  *sync.Cond
+	size  int64
+	have  int64
+	done  bool
+	err   string
+	errAt time.Time
+	busy  bool
 }
 
 var (
@@ -225,6 +88,17 @@ func ypCacheDir() string {
 
 // a finished song in the cache (name.ext plus name.ext.ok)
 func ypCached(vid string) (string, string) {
+	// a finished song whose file was busy when it finished keeps its download name (.dl); its note says the type
+	if b, err := os.ReadFile(filepath.Join(ypCacheDir(), vid+".dl.ok")); err == nil {
+		p := filepath.Join(ypCacheDir(), vid+".dl")
+		if st, err := os.Stat(p); err == nil && st.Size() > 10000 {
+			ext := "m4a"
+			if i := strings.Index(string(b), "|"); i >= 0 {
+				ext = strings.TrimSpace(string(b)[i+1:])
+			}
+			return p, ext
+		}
+	}
 	for _, ext := range []string{"m4a", "webm", "mp3"} {
 		p := filepath.Join(ypCacheDir(), vid+"."+ext)
 		if _, err := os.Stat(p + ".ok"); err == nil {
@@ -237,6 +111,8 @@ func ypCached(vid string) (string, string) {
 }
 
 // ypOpen: the song's cache file, downloading in the background if it isn't complete yet
+// ypOpen: the song's cache file; if it isn't there yet, yt-dlp downloads it into the file now
+// (yt-dlp itself does the downloading: YouTube cuts off other programs after the first ~30 seconds)
 func ypOpen(ctx context.Context, vid string) (*ypFile, error) {
 	ypFilesMu.Lock()
 	f := ypFiles[vid]
@@ -247,147 +123,211 @@ func ypOpen(ctx context.Context, vid string) (*ypFile, error) {
 	}
 	ypFilesMu.Unlock()
 	f.mu.Lock()
+	defer f.mu.Unlock()
 	if f.done && f.path != "" {
 		if _, err := os.Stat(f.path); err == nil {
-			f.mu.Unlock()
 			return f, nil
 		}
 		f.done, f.have = false, 0 // the cache was cleared
 	}
-	if f.busy { // someone else is getting it: wait until its file exists
-		for f.busy && f.path == "" && f.err == "" && ctx.Err() == nil {
-			f.cond.Wait()
+	if !f.busy {
+		if p, ext := ypCached(vid); p != "" {
+			st, _ := os.Stat(p)
+			f.path, f.ext, f.size, f.have, f.done, f.err = p, ext, st.Size(), st.Size(), true, ""
+			now := time.Now()
+			os.Chtimes(p, now, now) // recently played: kept longer
+			return f, nil
 		}
-		path, ferr := f.path, f.err
-		f.mu.Unlock()
-		if path == "" {
-			if ferr == "" {
-				ferr = "stopped"
-			}
-			return nil, errors.New(ferr)
+		if f.err != "" && time.Since(f.errAt) < 60*time.Second {
+			return nil, errors.New(f.err)
 		}
-		return f, nil
+		f.busy, f.err, f.size, f.have, f.path = true, "", 0, 0, ""
+		go ypDownload(f)
 	}
-	if p, ext := ypCached(vid); p != "" {
-		st, _ := os.Stat(p)
-		f.path, f.ext, f.size, f.have, f.done, f.err = p, ext, st.Size(), st.Size(), true, ""
-		f.mu.Unlock()
-		now := time.Now()
-		os.Chtimes(p, now, now) // recently played: kept longer
-		return f, nil
+	// wait until the file has started (we know its size), or it failed
+	stop := context.AfterFunc(ctx, func() { f.mu.Lock(); f.cond.Broadcast(); f.mu.Unlock() })
+	defer stop()
+	for f.busy && f.size == 0 && f.err == "" && ctx.Err() == nil {
+		f.cond.Wait()
 	}
-	f.busy, f.err = true, ""
-	f.mu.Unlock()
-
-	s, err := ypGet(ctx, vid, false)
-	if err == nil && s.Size <= 0 { // yt-dlp didn't say the size: ask YouTube
-		var resp *http.Response
-		if resp, err = ypUpstream(ctx, s, 0, 1); err == nil {
-			resp.Body.Close()
-			if cr := resp.Header.Get("Content-Range"); cr != "" {
-				if i := strings.LastIndex(cr, "/"); i >= 0 {
-					s.Size, _ = strconv.ParseInt(cr[i+1:], 10, 64)
-				}
-			}
-			if s.Size <= 0 {
-				err = fmt.Errorf("YouTube didn't say the file size (HTTP %d)", resp.StatusCode)
-			}
+	if f.path == "" || (f.err != "" && f.have == 0) {
+		if f.err != "" {
+			return nil, errors.New(f.err)
 		}
+		return nil, errors.New("stopped")
 	}
-	f.mu.Lock()
-	if err != nil {
-		f.busy, f.err = false, err.Error()
-		f.cond.Broadcast()
-		f.mu.Unlock()
-		return nil, err
-	}
-	f.ext, f.size, f.have, f.done = s.Ext, s.Size, 0, false
-	f.path = filepath.Join(ypCacheDir(), vid+"."+s.Ext)
-	f.cond.Broadcast()
-	f.mu.Unlock()
-	go ypDownload(f, s)
 	return f, nil
 }
 
-func ypDownload(f *ypFile, s *ypSrc) {
+var ypMetaRe = regexp.MustCompile(`^\s*([0-9.]+|NA|None)?\|([a-z0-9]+)\|`)
+
+func ypDownload(f *ypFile) {
+	vid := f.vid
 	fail := func(msg string) {
 		f.mu.Lock()
-		f.busy, f.err = false, msg
+		f.busy, f.err, f.errAt = false, msg, time.Now()
+		path := f.path
 		f.cond.Broadcast()
 		f.mu.Unlock()
-		os.Remove(f.path)
-		log.Printf("yt play: %s: %s", f.vid, msg)
+		if path != "" {
+			os.Remove(path)
+		}
+		ypMu.Lock()
+		ypFails++
+		ypFailsAt = time.Now()
+		ypMu.Unlock()
+		log.Printf("yt play: %s: %s", vid, msg)
 	}
-	out, err := os.Create(f.path)
+	ytdlp, err := dlEnsureYtdlp()
 	if err != nil {
 		fail(err.Error())
 		return
 	}
-	defer out.Close()
+	dir := ypCacheDir()
+	meta := filepath.Join(dir, vid+".meta")
+	os.Remove(meta)
+	defer os.Remove(meta)
+	tmp := filepath.Join(dir, vid+".dl")
 	start := time.Now()
-	var pos int64
-	tries := 0
-	buf := make([]byte, 64<<10)
-	for pos < f.size {
-		end := pos + ypChunk - 1
-		if end >= f.size {
-			end = f.size - 1
-		}
-		resp, err := ypUpstream(context.Background(), s, pos, end)
-		if err == nil && resp.StatusCode != 206 && resp.StatusCode != 200 {
-			resp.Body.Close()
-			err = fmt.Errorf("YouTube answered HTTP %d", resp.StatusCode)
-		}
-		got := int64(0)
-		if err == nil {
-			for {
-				n, rerr := resp.Body.Read(buf)
-				if n > 0 {
-					if _, werr := out.WriteAt(buf[:n], pos); werr != nil {
-						err = werr
-						break
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Minute)
+	defer cancel()
+	cmd := hidden(exec.CommandContext(ctx, ytdlp, "--no-playlist", "--no-warnings", "--ignore-config", "--encoding", "utf-8",
+		"--socket-timeout", "15", "--retries", "5", "--fragment-retries", "5", "--no-part", "--no-mtime", "--no-simulate",
+		"-f", "bestaudio[ext=m4a]/bestaudio[acodec^=mp4a]/bestaudio[ext=webm]/bestaudio/best[ext=mp4]/best",
+		"--print-to-file", "%(filesize)s|%(ext)s|%(duration)s", meta,
+		"-o", "-", "--", ypWatchURL(vid)))
+	cmd.Env = append(os.Environ(), "PATH="+dlToolsDir()+string(os.PathListSeparator)+os.Getenv("PATH"), "PYTHONIOENCODING=utf-8")
+	out, err := cmd.StdoutPipe()
+	if err != nil {
+		fail(err.Error())
+		return
+	}
+	var stderr strings.Builder
+	cmd.Stderr = &ypLimitWriter{w: &stderr, n: 64 << 10}
+	if err := cmd.Start(); err != nil {
+		fail(err.Error())
+		return
+	}
+	file, err := os.Create(tmp)
+	if err != nil {
+		cmd.Process.Kill()
+		fail(err.Error())
+		return
+	}
+	// the size / type note arrives before the sound: watch for it
+	gotMeta := make(chan struct{})
+	ended := make(chan struct{})
+	go func() {
+		defer close(gotMeta)
+		for i := 0; i < 900 && ctx.Err() == nil; i++ {
+			select {
+			case <-ended: // yt-dlp is done: one last look below, then stop
+				i = 899
+			default:
+			}
+			if b, err := os.ReadFile(meta); err == nil {
+				if m := ypMetaRe.FindStringSubmatch(string(b)); m != nil {
+					size, _ := strconv.ParseFloat(m[1], 64)
+					ext := m[2]
+					if ext == "mp4" {
+						ext = "m4a"
 					}
-					pos += int64(n)
-					got += int64(n)
 					f.mu.Lock()
-					f.have = pos
+					f.ext = ext
+					if size > 0 {
+						f.size = int64(size)
+					} else {
+						f.size = -1 // not known until it's all here
+					}
+					f.path = tmp
 					f.cond.Broadcast()
 					f.mu.Unlock()
-				}
-				if rerr != nil {
-					if rerr != io.EOF {
-						err = rerr
-					}
-					break
+					log.Printf("yt play: found %s in %v (%s, %d KB)", vid, time.Since(start).Round(time.Millisecond), ext, int64(size)>>10)
+					return
 				}
 			}
-			resp.Body.Close()
-			if err == nil && got == 0 {
-				err = errors.New("empty answer")
-			}
+			time.Sleep(100 * time.Millisecond)
 		}
-		if err != nil {
-			tries++
-			if tries > 4 {
-				fail("download stopped: " + err.Error())
-				return
+	}()
+	buf := make([]byte, 64<<10)
+	var pos int64
+	var werr error
+	for {
+		n, rerr := out.Read(buf)
+		if n > 0 {
+			if _, werr = file.WriteAt(buf[:n], pos); werr != nil {
+				break
 			}
-			time.Sleep(time.Duration(tries) * 600 * time.Millisecond)
-			if s2, e2 := ypGet(context.Background(), f.vid, true); e2 == nil { // the address may have run out
-				s = s2
+			pos += int64(n)
+			f.mu.Lock()
+			f.have = pos
+			if f.path == "" { // the sound came first: the note is late
+				f.path, f.size = tmp, -1
 			}
-			continue
+			f.cond.Broadcast()
+			f.mu.Unlock()
 		}
-		tries = 0
+		if rerr != nil {
+			break
+		}
 	}
-	out.Sync()
-	os.WriteFile(f.path+".ok", []byte(strconv.FormatInt(f.size, 10)), 0o644)
+	file.Close()
+	err = cmd.Wait()
+	close(ended)
+	<-gotMeta
+	if werr != nil || err != nil || pos < 10000 {
+		msg := dlLastError(strings.Split(strings.TrimSpace(stderr.String()), "\n"))
+		if msg == "" && werr != nil {
+			msg = werr.Error()
+		}
+		if msg == "" && err != nil {
+			msg = err.Error()
+		}
+		if msg == "" {
+			msg = "no sound came"
+		}
+		fail(msg)
+		os.Remove(tmp)
+		return
+	}
 	f.mu.Lock()
-	f.done, f.busy = true, false
+	ext := f.ext
+	if ext == "" {
+		ext = "m4a"
+	}
+	final := filepath.Join(dir, vid+"."+ext)
+	f.mu.Unlock()
+	// players still reading the .dl file keep their handle; the finished song gets its real name
+	if err := os.Rename(tmp, final); err != nil {
+		final = tmp
+	}
+	os.WriteFile(final+".ok", []byte(strconv.FormatInt(pos, 10)+"|"+ext), 0o644)
+	f.mu.Lock()
+	f.path, f.size, f.have, f.done, f.busy = final, pos, pos, true, false
 	f.cond.Broadcast()
 	f.mu.Unlock()
-	log.Printf("yt play: %s cached (%d KB in %v)", f.vid, f.size>>10, time.Since(start).Round(100*time.Millisecond))
+	ypMu.Lock()
+	ypFails = 0
+	ypMu.Unlock()
+	log.Printf("yt play: %s ready (%d KB in %v)", vid, pos>>10, time.Since(start).Round(100*time.Millisecond))
 	go ypTrim()
+}
+
+type ypLimitWriter struct {
+	w io.Writer
+	n int
+}
+
+func (l *ypLimitWriter) Write(p []byte) (int, error) {
+	if l.n > 0 {
+		k := len(p)
+		if k > l.n {
+			k = l.n
+		}
+		l.w.Write(p[:k])
+		l.n -= k
+	}
+	return len(p), nil
 }
 
 // the cache keeps the most recently played songs, up to ypCacheMax
@@ -465,6 +405,16 @@ func ypAudio(w http.ResponseWriter, r *http.Request) {
 		http.ServeContent(w, r, "", time.Time{}, fh)
 		return
 	}
+	if size < 0 { // the size isn't known yet: the sound as it arrives (seeking works once it's all here)
+		h := w.Header()
+		h.Set("Content-Type", ypMime(ext))
+		h.Set("Cache-Control", "no-store")
+		w.WriteHeader(200)
+		if r.Method == "HEAD" {
+			return
+		}
+		size = 1 << 62
+	}
 	var from, to int64 = 0, size - 1
 	if m := ypRangeRe.FindStringSubmatch(strings.TrimSpace(r.Header.Get("Range"))); m != nil && m[1] != "" {
 		from, _ = strconv.ParseInt(m[1], 10, 64)
@@ -474,20 +424,25 @@ func ypAudio(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 	}
-	if from >= size {
+	streaming := size == 1<<62
+	if streaming {
+		from = 0
+	} else if from >= size {
 		w.Header().Set("Content-Range", fmt.Sprintf("bytes */%d", size))
 		w.WriteHeader(416)
 		return
 	}
-	h := w.Header()
-	h.Set("Content-Type", ypMime(ext))
-	h.Set("Accept-Ranges", "bytes")
-	h.Set("Cache-Control", "no-store")
-	h.Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", from, to, size))
-	h.Set("Content-Length", strconv.FormatInt(to-from+1, 10))
-	w.WriteHeader(206)
-	if r.Method == "HEAD" {
-		return
+	if !streaming {
+		h := w.Header()
+		h.Set("Content-Type", ypMime(ext))
+		h.Set("Accept-Ranges", "bytes")
+		h.Set("Cache-Control", "no-store")
+		h.Set("Content-Range", fmt.Sprintf("bytes %d-%d/%d", from, to, size))
+		h.Set("Content-Length", strconv.FormatInt(to-from+1, 10))
+		w.WriteHeader(206)
+		if r.Method == "HEAD" {
+			return
+		}
 	}
 	// wake the waiting below when the player goes away
 	go func() {
@@ -509,9 +464,9 @@ func ypAudio(w http.ResponseWriter, r *http.Request) {
 		for f.have <= pos && !f.done && f.err == "" && ctx.Err() == nil {
 			f.cond.Wait()
 		}
-		have, ferr := f.have, f.err
+		have, ferr, fdone := f.have, f.err, f.done
 		f.mu.Unlock()
-		if ctx.Err() != nil || (ferr != "" && have <= pos) {
+		if ctx.Err() != nil || (ferr != "" && have <= pos) || (fdone && have <= pos) {
 			return
 		}
 		if fh == nil {

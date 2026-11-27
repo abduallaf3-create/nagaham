@@ -732,6 +732,21 @@ function ypPrepNext() {
   }
 }
 audio.addEventListener("playing", () => { if (YP.cur && P.current === YP.cur.id) YP.fails = 0; });
+// seeking while the song is still arriving: a spot that isn't seekable yet loads again from the cache once it can
+function ypSeek(v, tries = 0) {
+  const c = YP.cur; if (!c || P.current !== c.id || E.mode !== "audio") return false;
+  const sk = audio.seekable;
+  for (let i = 0; i < sk.length; i++) if (v >= sk.start(i) && v <= sk.end(i) + 0.5) return false; // it can jump there itself
+  const paused = audio.paused && !P.wantPlay;
+  audio.src = "/api/yt/audio/" + c.vid + "?r=" + Date.now();
+  audio.addEventListener("loadedmetadata", () => {
+    try { audio.currentTime = v; } catch {}
+    if (!paused) audio.play().catch(() => {});
+    // still arriving and that spot isn't here yet: try again in a moment
+    if (tries < 15) setTimeout(() => { if (YP.cur === c && audio.currentTime < v - 3) ypSeek(v, tries + 1); }, 2000);
+  }, { once: true });
+  return true;
+}
 
 /* the refresh button: start the current song again from where it is, with a clean player */
 let reloading = false;
@@ -919,7 +934,7 @@ function audioWatch(id, src, startAt, retried) {
     } else { toast(`“${T(id)?.title}” isn't loading — skipping`); next(true); }
   }, retried ? 12000 : 9000);
 }
-audio.addEventListener("stalled", () => { if (E.mode === "audio" && P.current && !audio.paused) audioWatch(P.current, P.loaded && T(P.current)?.fallback || P.current, audio.currentTime); });
+audio.addEventListener("stalled", () => { if (E.mode === "audio" && P.current && !audio.paused && !(YP.cur && YP.cur.id === P.current)) audioWatch(P.current, P.loaded && T(P.current)?.fallback || P.current, audio.currentTime); });
 audio.addEventListener("playing", () => clearTimeout(P.watch));
 /* YouTube video that never starts: nudge it, then try the next one */
 function ytWatch(id, vid) {

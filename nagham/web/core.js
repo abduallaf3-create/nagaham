@@ -92,7 +92,7 @@ const E = {
   mode: "audio",
   get paused() { return this.mode === "external" ? !(EXT.embedded && EXT.playing) : this.mode === "spotify" ? SPP.paused : this.mode === "youtube" ? YTS.paused : audio.paused; },
   get time() { return this.mode === "external" ? (EXT.embedded ? extTime() : 0) : this.mode === "spotify" ? spPos() : this.mode === "youtube" ? ytTime() : audio.currentTime; },
-  set time(v) { if (this.mode === "external") { if (EXT.embedded) extSeek(v); } else if (this.mode === "spotify") spSeek(v); else if (this.mode === "youtube") YTS.player?.seekTo(v, true); else audio.currentTime = v; },
+  set time(v) { if (this.mode === "external") { if (EXT.embedded) extSeek(v); } else if (this.mode === "spotify") spSeek(v); else if (this.mode === "youtube") YTS.player?.seekTo(v, true); else if (typeof ypSeek === "function" && ypSeek(v)) {} else audio.currentTime = v; },
   get duration() { return this.mode === "external" ? extDur() : this.mode === "spotify" ? SPP.dur : this.mode === "youtube" ? ytDur() : audio.duration; },
   play() { if (extOn()) { EXT.playing = true; EXT.cmdAt = Date.now(); ytmCmd(YTM_PLAY); setTimeout(() => { renderPP(); markPlaying(); discordUpdate(true); }); return Promise.resolve(); }
     if (this.mode === "external") { const w = window.open(EXT.url, "nagham-ytmusic", ytmFeatures()); if (!w) api("/api/openurl", { url: EXT.url }); return Promise.resolve(); } return this.mode === "spotify" ? Promise.resolve(spResume()) : this.mode === "youtube" ? Promise.resolve(YTS.player?.playVideo()) : audio.play(); },
