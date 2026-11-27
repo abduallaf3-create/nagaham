@@ -45,7 +45,7 @@ const SETTINGS_TABS = {
       <div class="set-row"><div class="lbl"><b>Your country</b><span>Used for "Top songs" on the home page and for search</span></div>
         <select class="input" id="countrySel" style="flex:0 0 200px">${Object.entries(COUNTRIES).map(([k, v]) => `<option value="${k}" ${settings.country === k ? "selected" : ""}>${v}</option>`).join("")}</select></div>
       <div class="set-row"><div class="lbl"><b>Nagham's own player for online songs</b><span>Nagham gets the song's sound itself and keeps it for instant replay — no ads, much lighter on your PC. Off: songs play through a hidden YouTube Music page.</span></div>
-        <div class="seg" data-ypplay>${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-v="${v}" class="${(settings.ytdlpPlay === false ? "off" : "on") === v ? "on" : ""}">${l}</button>`).join("")}</div></div>
+        <div class="seg" data-ypplay>${[["on", "On"], ["off", "Off"]].map(([v, l]) => `<button data-v="${v}" class="${(settings.ownPlayer === true ? "on" : "off") === v ? "on" : ""}">${l}</button>`).join("")}</div></div>
       <div class="set-row"><div class="lbl"><b>Songs YouTube won't play inside Nagham</b><span>Many music videos are blocked by YouTube in other apps. Open them in full in a YouTube Music window, or skip them. (Nagham never plays 30-second clips.)</span></div>
         <div class="seg" data-elsewhere>${[["open", "Open in YouTube Music"], ["skip", "Skip"]].map(([v, l]) => `<button data-v="${v}" class="${(settings.elsewhere || "open") === v ? "on" : ""}">${l}</button>`).join("")}</div></div>
 ${IOS ? "" : `      <div class="set-row"><div class="lbl"><b>YouTube Music window</b><span>Size and where it opens. Small is a compact player you can keep beside Nagham.</span></div>
@@ -103,7 +103,7 @@ $("#view").addEventListener("click", e => {
   if (e.target.closest("[data-minireset]")) { settings.ytMini = {}; saveUser(); applyMiniGeom(); toast("Video box reset"); }
 });
 $("#view").addEventListener("click", e => { const b = e.target.closest("[data-elsewhere] button"); if (b) { settings.elsewhere = b.dataset.v; saveUser(); render(true); } });
-$("#view").addEventListener("click", e => { const b = e.target.closest("[data-ypplay] button"); if (b) { settings.ytdlpPlay = b.dataset.v !== "off"; saveUser(); render(true); toast(settings.ytdlpPlay ? "Online songs play in Nagham's own player" : "Online songs play through YouTube Music"); } });
+$("#view").addEventListener("click", e => { const b = e.target.closest("[data-ypplay] button"); if (b) { settings.ownPlayer = b.dataset.v === "on"; saveUser(); render(true); toast(settings.ownPlayer ? "Online songs play in Nagham's own player" : "Online songs play through YouTube Music"); } });
 $("#view").addEventListener("change", e => {
   const kb = e.target.dataset?.kbd;
   if (kb) {

@@ -681,7 +681,7 @@ function iosKeepAlive(on) {
 setInterval(() => { if (IOS) iosKeepAlive(!!(P.current && P.wantPlay && (E.mode === "external" || E.mode === "youtube"))); }, 1500);
 /* ---- Nagham's own player for YouTube songs (yt-dlp + a cache) ---- */
 const YP = { cur: null, fails: 0, offUntil: 0 };
-function ypOn() { return settings.ytdlpPlay !== false && Date.now() > YP.offUntil; }
+function ypOn() { return settings.ownPlayer === true && Date.now() > YP.offUntil; } // off unless switched on in Settings
 async function ypVideo(id) {
   const t = T(id); if (!t) return null;
   const bad = t.ypFailed || [];
